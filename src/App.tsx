@@ -1,0 +1,58 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import { Layout } from './components/layout/Layout';
+import { BackofficeRoute } from './components/auth/BackofficeRoute';
+import { MetaPixelTracker } from './components/MetaPixelTracker';
+import { HomePage } from './pages/HomePage';
+import { LoginPage } from './pages/LoginPage';
+import { SignUpPage } from './pages/SignUpPage';
+import { ConfirmationPage } from './pages/ConfirmationPage';
+import { OrderDetailPage } from './pages/OrderDetailPage';
+import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
+import { BackofficeOrdersPage } from './pages/backoffice/BackofficeOrdersPage';
+import { BackofficeBooksPage } from './pages/backoffice/BackofficeBooksPage';
+import { BackofficeAddBookPage } from './pages/backoffice/BackofficeAddBookPage';
+import { BackofficeCategoriesPage } from './pages/backoffice/BackofficeCategoriesPage';
+
+function App() {
+  return (
+    <ToastProvider>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <MetaPixelTracker />
+            <Routes>
+              <Route path="login" element={<LoginPage />} />
+              <Route path="cadastro" element={<SignUpPage />} />
+              <Route element={<Layout />}>
+                <Route index element={<HomePage />} />
+                <Route path="catalogo" element={<Navigate to="/#catalogo" replace />} />
+                <Route path="encomenda" element={<Navigate to="/#encomenda" replace />} />
+                <Route path="confirmacao/:orderId" element={<ConfirmationPage />} />
+                <Route path="encomenda/:orderId" element={<OrderDetailPage />} />
+                <Route
+                  path="backoffice"
+                  element={(
+                    <BackofficeRoute>
+                      <BackofficeLayout />
+                    </BackofficeRoute>
+                  )}
+                >
+                  <Route index element={<Navigate to="encomendas" replace />} />
+                  <Route path="encomendas" element={<BackofficeOrdersPage />} />
+                  <Route path="livros" element={<BackofficeBooksPage />} />
+                  <Route path="livros/novo" element={<BackofficeAddBookPage />} />
+                  <Route path="categorias" element={<BackofficeCategoriesPage />} />
+                </Route>
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </CartProvider>
+      </AuthProvider>
+    </ToastProvider>
+  );
+}
+
+export default App;
