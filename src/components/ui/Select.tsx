@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { useState, useRef, useEffect, useId, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, X } from 'lucide-react';
 import './Select.css';
@@ -51,9 +51,10 @@ export function Select({
   const selectId = id ?? generatedId;
   const isMobile = useIsMobile();
 
-  const listOptions: SelectOption[] = clearable
-    ? [{ value: '', label: placeholder }, ...options]
-    : options;
+  const listOptions: SelectOption[] = useMemo(
+    () => (clearable ? [{ value: '', label: placeholder }, ...options] : options),
+    [clearable, placeholder, options],
+  );
 
   const selectedLabel =
     options.find((o) => o.value === value)?.label ??

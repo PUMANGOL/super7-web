@@ -1,0 +1,77 @@
+.product-form-section {
+  margin-bottom: 1.25rem;
+}
+
+.product-form-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.product-form-hint {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+.product-form-sub {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.product-form-rows {
+  display: grid;
+  gap: 0.625rem;
+  justify-items: start;
+}
+
+.product-form-rows ul {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.product-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.product-form-row--item {
+  grid-template-columns: 6rem minmax(0, 1fr) auto;
+}
+
+.backoffice-product-price-old {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  text-decoration: line-through;
+}
+
+.backoffice-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.backoffice-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.backoffice-note {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--brand-primary-light);
+  font-size: 0.8125rem;
+  color: var(--gray-700);
+}

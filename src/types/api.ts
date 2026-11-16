@@ -1,155 +1,321 @@
+/**
+ * Tipos do contrato da Pumangol Marketplace API (ver docs/openapi.yaml no repositório da API).
+ *
+ * Os campos marcados com "Proposto" ainda não existem na API: estão descritos em
+ * docs/api-campos-em-falta.md. São todos opcionais, para o frontend funcionar com
+ * a API actual (que os ignora nos pedidos e não os devolve) e com a futura.
+ */
+import type { DeliveryType, PaymentMethod, PaymentStatus } from '../config/store';
+
+export type UUID = string;
+
 export interface ApiResponse<T> {
   status: string;
   data: T;
-  errors: unknown[];
+  errors: string[] | null;
 }
 
 export interface Page<T> {
   content: T[];
   totalElements: number;
   totalPages: number;
-  size: number;
   number: number;
+  size: number;
+  numberOfElements: number;
   first: boolean;
   last: boolean;
   empty: boolean;
 }
 
-export interface Category {
-  id: number;
+/* ---------- Catálogo ---------- */
+
+export type ProductKind = 'PHYSICAL' | 'DIGITAL' | 'SERVICE';
+
+export interface ProductAttribute {
   name: string;
-  slug: string;
-  icon: string;
-  color: string;
-  description: string;
+  value: string;
 }
 
-export interface CreateCategoryDto {
+/** Proposto: nível do cabaz de Natal. */
+export type HamperLevel = 'GOLD' | 'SILVER' | 'BRONZE';
+
+/** Proposto: artigo incluído num cabaz. */
+export interface HamperItem {
+  name: string;
+  quantity: number;
+}
+
+/** Proposto: campos de loja do produto (hoje guardados em `attributes`). */
+export interface ProductStoreFields {
+  /** Slugs das campanhas: ["natal"], ["escoamento"]. */
+  campaigns?: string[] | null;
+  /** Preço antes do desconto (maior que `price`). */
+  previousPrice?: number | null;
+  /** Stock no início do escoamento. */
+  initialStock?: number | null;
+  /** "500 g", "6 × 1,5 L". */
+  format?: string | null;
+  /** Frase curta, até 255 caracteres. */
+  summary?: string | null;
+  hamperLevel?: HamperLevel | null;
+  /** Etiqueta do cartão do cabaz: "O mais completo". */
+  badge?: string | null;
+  hamperItems?: HamperItem[] | null;
+  /** Destaque na página inicial. */
+  featured?: boolean | null;
+}
+
+export interface ApiProduct extends ProductStoreFields {
+  id: UUID;
+  name: string;
+  sku: string;
+  description: string | null;
+  kind: ProductKind;
+  price: number;
+  currency: string;
+  stock: number | null;
+  available: boolean;
+  categoryId: UUID | null;
+  category: string | null;
+  coverImage: string | null;
+  status: string;
+  sellerId: UUID | null;
+  attributes: ProductAttribute[] | null;
+}
+
+/** Corpo de POST /product (parte `dto`) e PUT /product/{id}. */
+export interface ProductRequest extends ProductStoreFields {
+  name: string;
+  sku: string;
+  kind: ProductKind;
+  price: number;
+  stock: number;
+  categoryId: UUID;
+  description?: string;
+  currency?: string;
+  coverImage?: string;
+  available?: boolean;
+  attributes?: ProductAttribute[];
+}
+
+/** Proposto: `GET /campaign` (público) devolve as campanhas activas. */
+export interface ApiCampaign {
+  id: UUID;
+  /** "natal", "escoamento": é o valor usado em `Product.campaigns`. */
+  slug: string;
+  name: string;
+  description: string | null;
+  /** AAAA-MM-DD */
+  startDate: string;
+  /** AAAA-MM-DD */
+  endDate: string;
+  /** Prazo das encomendas (ISO 8601 com fuso), para a contagem decrescente. */
+  ordersUntil: string | null;
+  active: boolean;
+}
+
+/** Proposto: `GET /checkout/options` (público). */
+export interface ApiCheckoutOptions {
+  homeDeliveryEnabled: boolean;
+  homeDeliveryFee: number;
+  homeDeliveryZones: string[];
+  paymentMethods: PaymentMethod[];
+  giftMessageMaxLength: number;
+}
+
+export interface Category {
+  id: UUID;
   name: string;
   slug: string;
-  icon: string;
-  color: string;
-  description: string;
+  icon: string | null;
+  color: string | null;
+  description: string | null;
+}
+
+export interface CategoryRequest {
+  name: string;
+  slug: string;
+  icon?: string;
+  color?: string;
+  description?: string;
 }
 
 export interface Level {
-  id: number;
+  id: UUID;
   name: string;
   slug: string;
+  sortOrder?: number | null;
 }
 
 export interface SchoolClass {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-export interface ApiBookGrade {
-  id: number;
+  id: UUID;
   name: string;
   slug: string | null;
-  educationLevelId: string;
-  sortOrder: number | null;
+  educationLevelId: UUID;
+  sortOrder?: number | null;
 }
 
 export interface ApiBook {
-  id: number;
+  id: UUID;
   title: string;
-  categoryId: number;
+  categoryId: UUID;
   category: string;
-  grades: ApiBookGrade[];
+  grades: SchoolClass[] | null;
   quantity: number | null;
   price: number;
-  coverImage: string;
+  coverImage: string | null;
   author: string;
   isbn: string;
   available: boolean;
   description: string | null;
 }
 
-export interface BookFindParams {
-  schoolClassId: number;
-  categoryId: number;
-  educationLevelId: number;
-}
-
 export interface CreateBookDto {
   title: string;
-  categoryId: number;
-  grades: number[];
+  categoryId: UUID;
+  grades: UUID[];
   price: number;
   author: string;
   isbn: string;
   available: boolean;
 }
 
-export interface CreateOrderCustomer {
+/** Proposto: dados de contacto da loja (hoje o posto de recolha só tem nome). */
+export interface PickupPostDetails {
+  /** Município ou bairro: "Talatona, Luanda". */
+  zone?: string | null;
+  address?: string | null;
+  /** "Todos os dias, 06h00–22h00". */
+  openingHours?: string | null;
+  phone?: string | null;
+}
+
+export interface PickupPost extends PickupPostDetails {
+  id: UUID;
+  name: string;
+}
+
+export interface PickupPostRequest extends PickupPostDetails {
+  name: string;
+}
+
+/* ---------- Encomendas ---------- */
+
+export interface OrderCustomer {
   fullName: string;
   phone: string;
   email: string;
   location: string;
+  /** Proposto: NIF para a factura. */
+  nif?: string | null;
 }
 
-export interface CreateOrderItem {
-  bookId: number;
+/** Proposto: morada da entrega ao domicílio. */
+export interface DeliveryAddress {
+  address: string;
+  /** Bairro ou município. */
+  district: string;
+  /** Ponto de referência. */
+  reference?: string | null;
+}
+
+/** Proposto: oferta com cartão Boas Festas. */
+export interface OrderGift {
+  recipient: string;
+  message?: string | null;
+}
+
+/** Proposto: pagamento da encomenda, gerido pela API. */
+export interface OrderPayment {
+  method: PaymentMethod;
+  status: PaymentStatus;
+  /** Multicaixa Express: telemóvel que recebe o pedido de pagamento. */
+  phone?: string | null;
+  /** Pagamento por referência. */
+  entity?: string | null;
+  reference?: string | null;
+  amount?: number | null;
+  /** Fim da validade da referência ou do pedido Multicaixa Express. */
+  expiresAt?: string | null;
+  paidAt?: string | null;
+}
+
+/** Envie `productId` (os livros também são produtos). */
+export interface OrderItemRequest {
+  productId?: UUID;
+  bookId?: UUID;
   quantity: number;
 }
 
-export interface CreateOrderPayload {
-  customer: CreateOrderCustomer;
-  pickupPostId: number;
-  notes: string;
-  items: CreateOrderItem[];
-  status?: string;
-}
-
-export interface ApiOrder {
-  id: number | string;
-  customer: CreateOrderCustomer & { pickupPostId?: number };
-  pickupPostId?: number;
+export interface OrderRequest {
+  customer: OrderCustomer;
+  /** Loja de levantamento ou, na entrega ao domicílio, a loja que prepara a encomenda. */
+  pickupPostId: UUID;
   notes?: string;
-  items?: CreateOrderItem[];
-  total?: number;
-  status?: string;
-  createdAt?: string;
+  items: OrderItemRequest[];
+  /** Proposto. */
+  deliveryType?: DeliveryType;
+  /** Proposto: data prevista de levantamento (AAAA-MM-DD). */
+  pickupDate?: string;
+  /** Proposto: obrigatório quando `deliveryType` é HOME_DELIVERY. */
+  deliveryAddress?: DeliveryAddress;
+  /** Proposto. */
+  gift?: OrderGift;
+  /** Proposto. */
+  paymentMethod?: PaymentMethod;
+  /** Proposto: obrigatório com MULTICAIXA_EXPRESS. */
+  paymentPhone?: string;
 }
 
 export interface ApiOrderItem {
-  id: number;
-  bookId: number;
+  id: UUID;
+  productId: UUID | null;
+  bookId: UUID | null;
+  /** Nome do produto ou livro. */
   book: string;
+  coverImage?: string | null;
   quantity: number;
   price: number;
-  subTotal?: number;
-  coverImage?: string | null;
+  subTotal: number;
 }
 
-export interface ApiOrderDetail {
-  id: number;
-  customer: CreateOrderCustomer;
-  pickupPostId: number;
+export interface ApiOrder {
+  id: UUID;
+  customer: OrderCustomer;
+  pickupPostId: UUID;
   pickupPost: string;
-  notes: string;
+  notes: string | null;
   items: ApiOrderItem[];
   status: string;
   createAt: string;
-  total?: number;
+  /** Hoje é a soma dos itens. Com o campo `deliveryFee`, passa a incluir a taxa de entrega. */
+  total: number;
+  /** Proposto. */
+  deliveryType?: DeliveryType | null;
+  /** Proposto. */
+  pickupDate?: string | null;
+  /** Proposto. */
+  deliveryAddress?: DeliveryAddress | null;
+  /** Proposto. */
+  gift?: OrderGift | null;
+  /** Proposto: soma dos itens. */
+  subtotal?: number | null;
+  /** Proposto: taxa de entrega calculada pela API (0 no levantamento). */
+  deliveryFee?: number | null;
+  /** Proposto. */
+  payment?: OrderPayment | null;
 }
 
-export interface PickupPost {
-  id: number;
-  name: string;
-}
+/* ---------- Autenticação ---------- */
 
 export interface AuthRole {
-  id: number;
+  id: UUID;
   name: string;
 }
 
 export interface AuthUser {
-  id: number;
+  id: UUID;
   email: string;
-  password: string | null;
   name: string;
   msisdn: string;
   status: string;
@@ -169,12 +335,4 @@ export interface SignInPayload {
 export interface SignInResponse {
   token: string;
   user: AuthUser;
-}
-
-export interface SignUpPayload {
-  email: string;
-  password: string;
-  name: string;
-  msisdn: string;
-  roles: number[];
 }

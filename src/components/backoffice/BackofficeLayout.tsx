@@ -1,42 +1,48 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { BookOpen, FolderOpen, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, FolderOpen, MapPin, Package, ShoppingBag } from 'lucide-react';
+import { useAuth } from '../../context/auth';
+import type { Permission } from '../../utils/auth';
 import { BackofficeUserMenu } from './BackofficeUserMenu';
 import './BackofficeLayout.css';
 import '../../pages/BackofficePage.css';
 
-const navItems = [
-  { to: '/backoffice/encomendas', label: 'Encomendas', icon: Package },
-  { to: '/backoffice/livros', label: 'Livros', icon: BookOpen },
-  { to: '/backoffice/categorias', label: 'Categorias', icon: FolderOpen },
+const navItems: { to: string; label: string; icon: typeof Package; permission: Permission }[] = [
+  { to: '/backoffice/encomendas', label: 'Encomendas', icon: Package, permission: 'viewOrders' },
+  { to: '/backoffice/produtos', label: 'Produtos', icon: ShoppingBag, permission: 'manageCatalog' },
+  { to: '/backoffice/livros', label: 'Livros', icon: BookOpen, permission: 'manageCatalog' },
+  { to: '/backoffice/categorias', label: 'Categorias', icon: FolderOpen, permission: 'manageCatalog' },
+  { to: '/backoffice/postos', label: 'Lojas de levantamento', icon: MapPin, permission: 'manageCatalog' },
 ];
 
 export function BackofficeLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const { can } = useAuth();
 
   return (
     <div className={`backoffice-layout${collapsed ? ' backoffice-layout--collapsed' : ''}`}>
       <aside className={`backoffice-sidebar${collapsed ? ' backoffice-sidebar--collapsed' : ''}`}>
         <div className="backoffice-sidebar-top">
-          <Link to="/" className="backoffice-sidebar-logo">
+          <Link to="/" className="backoffice-sidebar-logo" title="Ir para a loja Super7 Digital">
             <img src="/logo-pumangol.svg" alt="Pumangol — Cria boa energia" />
           </Link>
+          {!collapsed && <p className="backoffice-sidebar-product">Super7 Digital · Back-office</p>}
         </div>
 
         <nav className="backoffice-sidebar-nav">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                `backoffice-sidebar-link${isActive ? ' backoffice-sidebar-link--active' : ''}`
-              }
-            >
-              <Icon size={18} />
-              <span className="backoffice-sidebar-link-label">{label}</span>
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => can(item.permission))
+            .map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                title={collapsed ? label : undefined}
+                className={({ isActive }) => `backoffice-sidebar-link${isActive ? ' backoffice-sidebar-link--active' : ''}`}
+              >
+                <Icon size={18} />
+                <span className="backoffice-sidebar-link-label">{label}</span>
+              </NavLink>
+            ))}
         </nav>
 
         <div className="backoffice-sidebar-footer">
@@ -45,7 +51,7 @@ export function BackofficeLayout() {
 
         <button
           className="backoffice-sidebar-toggle"
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setCollapsed((current) => !current)}
           title={collapsed ? 'Expandir menu' : 'Encolher menu'}
           aria-label={collapsed ? 'Expandir menu' : 'Encolher menu'}
         >
@@ -54,7 +60,15 @@ export function BackofficeLayout() {
       </aside>
 
       <div className="backoffice-main">
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="backoffice-empty">
+              <p>A carregar…</p>
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   );

@@ -1,26 +1,30 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Trash2 } from 'lucide-react';
-import { useBooksPage } from '../../hooks/useBooks';
-import { useDeleteBook } from '../../hooks/useDeleteBook';
-import { formatPrice } from '../../utils/helpers';
-import { formatBookEducationLevels, formatBookGradeNames } from '../../utils/bookGrades';
-import { BookCover } from '../../components/catalog/BookCover';
+import { getApiErrorMessage } from '../../api/client';
+import { Thumbnail } from '../../components/backoffice/Thumbnail';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { Pagination } from '../../components/ui/Pagination';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../context/toast';
+import { useBooksPage } from '../../hooks/useBooks';
+import { useDeleteBook } from '../../hooks/useDeleteBook';
+import { useLevels } from '../../hooks/useLevels';
 import type { ApiBook } from '../../types/api';
+import { formatBookEducationLevels, formatBookGradeNames } from '../../utils/bookGrades';
+import { formatPrice } from '../../utils/helpers';
 
 export function BackofficeBooksPage() {
   const [page, setPage] = useState(0);
   const { data: booksPage, isLoading, isFetching } = useBooksPage(page);
-  const books = booksPage?.content ?? [];
+  const books = useMemo(() => booksPage?.content ?? [], [booksPage]);
   const totalPages = booksPage?.totalPages ?? 1;
   const totalElements = booksPage?.totalElements ?? 0;
   const { mutate: deleteBook, isPending: isDeleting, variables: deletingId } = useDeleteBook();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
   const [bookToDelete, setBookToDelete] = useState<ApiBook | null>(null);
+  const { data: levels = [] } = useLevels();
+  const levelNames = useMemo(() => new Map(levels.map((level) => [level.id, level.name])), [levels]);
 
   const filteredBooks = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -28,10 +32,7 @@ export function BackofficeBooksPage() {
 
     return books.filter(
       (book) =>
-        book.title.toLowerCase().includes(query) ||
-        book.author.toLowerCase().includes(query) ||
-        book.isbn.includes(query) ||
-        book.category.toLowerCase().includes(query),
+        [book.title, book.author, book.isbn, book.category].some((value) => (value ?? '').toLowerCase().includes(query)),
     );
   }, [books, search]);
 
@@ -52,8 +53,8 @@ export function BackofficeBooksPage() {
         showToast('Livro eliminado com sucesso.');
         setBookToDelete(null);
       },
-      onError: () => {
-        showToast('Não foi possível eliminar o livro.', 'error');
+      onError: (error) => {
+        showToast(getApiErrorMessage(error, 'Não foi possível eliminar o livro. Pode estar em encomendas.'), 'error');
       },
     });
   };
@@ -66,7 +67,7 @@ export function BackofficeBooksPage() {
             <div>
               <h1 className="section-title">Livros</h1>
               <p className="section-subtitle">
-                Catálogo de livros disponíveis na campanha escolar.
+                Os livros também são produtos da loja e aparecem na categoria que lhes atribuir.
               </p>
             </div>
             <Link
@@ -139,11 +140,7 @@ export function BackofficeBooksPage() {
                       {filteredBooks.map((book) => (
                         <tr key={book.id}>
                           <td>
-                            <BookCover
-                              title={book.title}
-                              src={book.coverImage}
-                              className="backoffice-book-thumb"
-                            />
+                            <Thumbnail title={book.title} src={book.coverImage} className="backoffice-book-thumb" />
                           </td>
                           <td>
                             <div className="backoffice-book-title">{book.title}</div>
@@ -154,7 +151,7 @@ export function BackofficeBooksPage() {
                           <td>
                             <div>{formatBookGradeNames(book.grades)}</div>
                             <div className="backoffice-book-meta">
-                              {formatBookEducationLevels(book.grades)}
+                              {formatBookEducationLevels(book.grades, levelNames)}
                             </div>
                           </td>
                           <td className="price">{formatPrice(book.price)}</td>
@@ -192,7 +189,7 @@ export function BackofficeBooksPage() {
               <div className="backoffice-empty">
                 <p>
                   {books.length === 0 && totalElements === 0
-                    ? 'Ainda não existem livros cadastrados.'
+                    ? 'Ainda não existem livros.'
                     : 'Nenhum livro corresponde à pesquisa.'}
                 </p>
               </div>
@@ -208,7 +205,7 @@ export function BackofficeBooksPage() {
         title="Eliminar livro"
         message={
           bookToDelete
-            ? `Tem a certeza que deseja eliminar "${bookToDelete.title}"? Esta ação não pode ser desfeita.`
+            ? `Tem a certeza de que quer eliminar "${bookToDelete.title}"? Esta ação não pode ser desfeita.`
             : ''
         }
         confirmLabel="Eliminar"

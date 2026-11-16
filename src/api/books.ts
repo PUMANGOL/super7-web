@@ -1,79 +1,43 @@
-import { apiClient } from './client';
-import type { ApiResponse, ApiBook, BookFindParams, CreateBookDto, Page } from '../types/api';
-import type { Book } from '../types';
+import { apiClient, unwrap } from './client';
+import type { ApiBook, ApiResponse, CreateBookDto, Page } from '../types/api';
 
-export const BOOKS_PAGE_SIZE = 8;
+export const BOOKS_PAGE_SIZE = 10;
 
-export async function fetchBooksPage(
-  page: number,
-  size = BOOKS_PAGE_SIZE,
-): Promise<Page<ApiBook>> {
+export async function fetchBooksPage(page: number, size = BOOKS_PAGE_SIZE): Promise<Page<ApiBook>> {
+  // No JPA o título do livro é a propriedade `name` (herdada de Product): `sort=title` dá erro 500.
   const { data } = await apiClient.get<ApiResponse<Page<ApiBook>>>('/book', {
-    params: { page, size },
+    params: { page, size, sort: 'name,asc' },
   });
-
-  return data.data;
+  return unwrap(data);
 }
 
-export async function findBooksPage(
-  page: number,
-  filters: BookFindParams,
-  size = BOOKS_PAGE_SIZE,
-): Promise<Page<ApiBook>> {
-  const { data } = await apiClient.get<ApiResponse<Page<ApiBook>>>('/book/find', {
-    params: {
-      page,
-      size,
-      ...filters,
-    },
-  });
+/** Todos os livros activos (várias páginas grandes). */
+export async function fetchAllBooks(): Promise<ApiBook[]> {
+  const size = 200;
+  const first = await fetchBooksPage(0, size);
+  const books = [...first.content];
 
-  return data.data;
+  if (first.totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: first.totalPages - 1 }, (_, index) => fetchBooksPage(index + 1, size)),
+    );
+    rest.forEach((page) => books.push(...page.content));
+  }
+
+  return books;
 }
 
-export async function fetchAllBooksForLookup(): Promise<ApiBook[]> {
-  const firstPage = await fetchBooksPage(0);
-  const allBooks = [...firstPage.content];
-
-  if (firstPage.totalPages <= 1) return allBooks;
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
-      fetchBooksPage(index + 1),
-    ),
-  );
-
-  remainingPages.forEach((booksPage) => {
-    allBooks.push(...booksPage.content);
-  });
-
-  return allBooks;
-}
-
+/** POST multipart: `dto` em texto JSON e `imagem` obrigatória. */
 export async function createBook(dto: CreateBookDto, image: File): Promise<ApiBook> {
-  const formData = new FormData();
-  formData.append('dto', new Blob([JSON.stringify(dto)], { type: 'application/json' }));
-  formData.append('imagem', image);
+  const form = new FormData();
+  form.append('dto', JSON.stringify(dto));
+  form.append('imagem', image);
 
-  const { data } = await apiClient.post<ApiResponse<ApiBook>>('/book', formData);
-
-  return data.data;
+  const { data } = await apiClient.post<ApiResponse<ApiBook>>('/book', form);
+  return unwrap(data);
 }
 
-export async function deleteBook(id: number): Promise<void> {
+/** Eliminação definitiva. */
+export async function deleteBook(id: string): Promise<void> {
   await apiClient.delete(`/book/${id}`);
-}
-
-export function mapApiBookToBook(apiBook: ApiBook): Book {
-  return {
-    id: String(apiBook.id),
-    title: apiBook.title,
-    category: apiBook.category,
-    grades: apiBook.grades ?? [],
-    price: apiBook.price,
-    coverImage: apiBook.coverImage,
-    author: apiBook.author,
-    isbn: apiBook.isbn,
-    description: apiBook.description,
-  };
 }

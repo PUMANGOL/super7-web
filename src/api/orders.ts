@@ -1,121 +1,64 @@
-import { apiClient } from './client';
-import type { ApiResponse, ApiOrder, ApiOrderDetail, CreateOrderPayload, Page } from '../types/api';
-import type { CartItem, CustomerData, Order } from '../types';
+import { apiClient, unwrap } from './client';
+import type { ApiOrder, ApiResponse, OrderRequest, Page } from '../types/api';
 
-export function getOrderTotal(order: Pick<ApiOrderDetail, 'items' | 'total'>): number {
-  if (order.total != null) return order.total;
-  return order.items.reduce((sum, item) => sum + (item.subTotal ?? item.price * item.quantity), 0);
+/** Checkout público: responde 201 com a encomenda em estado `Pendente`. */
+export async function createOrder(payload: OrderRequest): Promise<ApiOrder> {
+  const { data } = await apiClient.post<ApiResponse<ApiOrder>>('/order', payload);
+  return unwrap(data);
 }
 
-export async function fetchOrderById(id: number): Promise<ApiOrderDetail> {
-  const { data } = await apiClient.get<ApiResponse<ApiOrderDetail>>(`/order/${id}`);
-  return data.data;
+/** Só para a equipa (ADMIN, MANAGER, SUPPORT, FINANCE, AUDITOR). */
+export async function fetchOrder(id: string): Promise<ApiOrder> {
+  const { data } = await apiClient.get<ApiResponse<ApiOrder>>(`/order/${id}`);
+  return unwrap(data);
 }
 
-export async function fetchOrders(): Promise<ApiOrderDetail[]> {
-  const all: ApiOrderDetail[] = [];
+/**
+ * Proposto: estado da encomenda para o cliente, sem sessão e com dados limitados
+ * (sem telefone nem e-mail completos). Só é chamado com `api_features=order-tracking`.
+ */
+export async function fetchOrderTracking(id: string): Promise<ApiOrder> {
+  const { data } = await apiClient.get<ApiResponse<ApiOrder>>(`/order/${id}/tracking`);
+  return unwrap(data);
+}
+
+/** Todas as encomendas, em qualquer estado, das mais recentes para as mais antigas. */
+export async function fetchAllOrders(): Promise<ApiOrder[]> {
+  const all: ApiOrder[] = [];
   let page = 0;
   let last = false;
 
   while (!last) {
-    const { data } = await apiClient.get<ApiResponse<Page<ApiOrderDetail>>>('/order', {
-      params: { page, size: 50 },
+    const { data } = await apiClient.get<ApiResponse<Page<ApiOrder>>>('/order', {
+      params: { page, size: 100, sort: 'createAt,desc' },
     });
-
-    const pageData = data.data;
+    const pageData = unwrap(data);
     all.push(...pageData.content);
-    last = pageData.last;
+    last = pageData.last || pageData.content.length === 0;
     page += 1;
   }
 
   return all;
 }
 
-export function buildUpdateOrderPayload(
-  order: ApiOrderDetail,
-  status: string,
-): CreateOrderPayload {
-  return {
-    customer: {
-      fullName: order.customer.fullName,
-      phone: order.customer.phone,
-      email: order.customer.email,
-      location: order.customer.location,
-    },
-    pickupPostId: order.pickupPostId,
-    notes: order.notes ?? '',
-    items: order.items.map((item) => ({
-      bookId: item.bookId,
-      quantity: item.quantity,
-    })),
-    status,
-  };
+/** Muda o estado e envia um email ao cliente. */
+export async function updateOrderStatus(id: string, statusId: number): Promise<ApiOrder> {
+  const { data } = await apiClient.put<ApiResponse<ApiOrder>>(`/order/${id}/status`, null, {
+    params: { statusId },
+  });
+  return unwrap(data);
 }
 
-export async function updateOrder(
-  id: number,
-  payload: CreateOrderPayload,
-): Promise<ApiOrderDetail> {
-  const { data } = await apiClient.put<ApiResponse<ApiOrderDetail>>(`/order/${id}`, payload);
-
-  return data.data;
+export function getOrderTotal(order: Pick<ApiOrder, 'items' | 'total'>): number {
+  if (order.total != null) return Number(order.total);
+  return order.items.reduce((sum, item) => sum + (item.subTotal ?? item.price * item.quantity), 0);
 }
 
-export async function updateOrderStatus(
-  id: number,
-  statusId: number,
-): Promise<ApiOrderDetail> {
-  const { data } = await apiClient.put<ApiResponse<ApiOrderDetail>>(
-    `/order/${id}/status`,
-    null,
-    { params: { statusId } },
-  );
-
-  return data.data;
+/** Primeiros 8 caracteres do UUID, em maiúsculas: forma curta para listas. */
+export function shortOrderId(id: string): string {
+  return id.slice(0, 8).toUpperCase();
 }
 
-export function buildCreateOrderPayload(
-  customer: CustomerData,
-  items: CartItem[],
-): CreateOrderPayload {
-  const orderItems = items
-    .filter((item) => item.quantity > 0 && Number.isFinite(Number(item.book.id)))
-    .map((item) => ({
-      bookId: Number(item.book.id),
-      quantity: item.quantity,
-    }));
-
-  return {
-    customer: {
-      fullName: customer.fullName,
-      phone: customer.phone,
-      email: customer.email,
-      location: customer.location,
-    },
-    pickupPostId: Number(customer.pickupPostId),
-    notes: customer.notes,
-    items: orderItems,
-  };
-}
-
-export async function createOrder(payload: CreateOrderPayload): Promise<ApiOrder> {
-  const { data } = await apiClient.post<ApiResponse<ApiOrder>>('/order', payload);
-
-  return data.data;
-}
-
-export function mapApiOrderToOrder(
-  apiOrder: ApiOrder,
-  customer: CustomerData,
-  items: CartItem[],
-  total: number,
-): Order {
-  return {
-    id: String(apiOrder.id),
-    customer,
-    items: [...items],
-    total: apiOrder.total ?? total,
-    status: 'pendente',
-    createdAt: apiOrder.createdAt ?? new Date().toISOString(),
-  };
+export function getOrderUnits(order: Pick<ApiOrder, 'items'>): number {
+  return order.items.reduce((sum, item) => sum + Number(item.quantity), 0);
 }

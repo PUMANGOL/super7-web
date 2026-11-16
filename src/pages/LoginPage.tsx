@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
-import { canAccessBackoffice as userCanAccessBackoffice } from '../utils/auth';
+import { getApiErrorMessage } from '../api/client';
+import { useAuth } from '../context/auth';
+import { useToast } from '../context/toast';
+import { canAccessBackoffice } from '../utils/auth';
 import './LoginPage.css';
 
 interface LoginForm {
@@ -11,32 +12,25 @@ interface LoginForm {
   password: string;
 }
 
-const initialForm: LoginForm = {
-  email: '',
-  password: '',
-};
+type Destination = { pathname?: string; search?: string; hash?: string } | undefined;
 
+function destinationPath(from: Destination): string {
+  return from?.pathname ? `${from.pathname}${from.search ?? ''}${from.hash ?? ''}` : '/backoffice';
+}
+
+/** Entrada da equipa no back-office. Os clientes da loja não precisam de conta. */
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading, canAccessBackoffice } = useAuth();
+  const { login, isAuthenticated, canAccessBackoffice: hasAccess } = useAuth();
   const { showToast } = useToast();
-  const [form, setForm] = useState<LoginForm>(initialForm);
+  const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginForm, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const from = (location.state as { from?: Destination } | null)?.from;
 
-  const from = location.state?.from as
-    | { pathname?: string; search?: string; hash?: string }
-    | undefined;
-
-  if (!isLoading && isAuthenticated) {
-    const redirectTo = from?.pathname?.startsWith('/backoffice') && !canAccessBackoffice
-      ? '/'
-      : from
-        ? `${from.pathname ?? '/'}${from.search ?? ''}${from.hash ?? ''}`
-        : '/';
-
-    return <Navigate to={redirectTo} replace />;
+  if (isAuthenticated && !submitting) {
+    return <Navigate to={hasAccess ? destinationPath(from) : '/'} replace />;
   }
 
   const updateField = <K extends keyof LoginForm>(key: K, value: LoginForm[K]) => {
@@ -45,42 +39,30 @@ export function LoginPage() {
   };
 
   const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof LoginForm, string>> = {};
-
-    if (!form.email.trim()) newErrors.email = 'Obrigatório';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = 'Email inválido';
-
-    if (!form.password) newErrors.password = 'Obrigatório';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const found: Partial<Record<keyof LoginForm, string>> = {};
+    if (!form.email.trim()) found.email = 'Obrigatório';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) found.email = 'E-mail inválido';
+    if (!form.password) found.password = 'Obrigatório';
+    setErrors(found);
+    return Object.keys(found).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     if (!validate()) return;
 
     setSubmitting(true);
-
     try {
       const user = await login(form.email.trim(), form.password);
-      showToast('Sessão iniciada com sucesso!');
-
-      const wantsBackoffice = from?.pathname?.startsWith('/backoffice');
-
-      if (wantsBackoffice && !userCanAccessBackoffice(user)) {
-        showToast('Não tem permissão para aceder ao backoffice.', 'error');
+      if (!canAccessBackoffice(user)) {
+        showToast('A sua conta não tem acesso ao back-office.', 'error');
         navigate('/', { replace: true });
         return;
       }
-
-      const redirectTo = from
-        ? `${from.pathname ?? '/'}${from.search ?? ''}${from.hash ?? ''}`
-        : '/';
-
-      navigate(redirectTo, { replace: true });
-    } catch {
-      showToast('Email ou palavra-passe incorretos.', 'error');
+      showToast(`Bem-vindo, ${user.name}.`);
+      navigate(destinationPath(from), { replace: true });
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'E-mail ou palavra-passe inválidos.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -91,13 +73,13 @@ export function LoginPage() {
       <div className="login-card">
         <div className="login-brand">
           <img src="/logo-pumangol.svg" alt="Pumangol" />
-          <h1>Iniciar sessão</h1>
-          <p>Inicie sessão para fazer encomendas na campanha escolar.</p>
+          <h1>Área reservada</h1>
+          <p>Back-office da loja Super7 Digital, para as equipas Pumangol.</p>
         </div>
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">
-            <label className="form-label" htmlFor="login-email">Email</label>
+            <label className="form-label" htmlFor="login-email">E-mail</label>
             <input
               id="login-email"
               type="email"
@@ -105,7 +87,7 @@ export function LoginPage() {
               className={`form-input ${errors.email ? 'error' : ''}`}
               value={form.email}
               onChange={(e) => updateField('email', e.target.value)}
-              placeholder="Ex: utilizador@pumangol.co.ao"
+              placeholder="nome@pumangol.co.ao"
             />
             {errors.email && <span className="form-error">{errors.email}</span>}
           </div>
@@ -119,23 +101,18 @@ export function LoginPage() {
               className={`form-input ${errors.password ? 'error' : ''}`}
               value={form.password}
               onChange={(e) => updateField('password', e.target.value)}
-              placeholder="Introduza a sua palavra-passe"
             />
             {errors.password && <span className="form-error">{errors.password}</span>}
           </div>
 
           <button type="submit" className="btn btn-primary btn-block login-submit" disabled={submitting}>
             <LogIn size={18} />
-            {submitting ? 'A entrar...' : 'Entrar'}
+            {submitting ? 'A entrar…' : 'Entrar'}
           </button>
         </form>
 
         <p className="login-footer">
-          Ainda não tem conta? <Link to="/cadastro">Criar conta</Link>
-        </p>
-
-        <p className="login-footer">
-          <Link to="/">Voltar à página inicial</Link>
+          É cliente? Não precisa de conta: <Link to="/">volte à loja</Link> e encomende directamente.
         </p>
       </div>
     </div>

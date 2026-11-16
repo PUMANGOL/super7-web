@@ -1,18 +1,23 @@
-import { apiClient } from './client';
-import type { ApiResponse, Category, CreateCategoryDto } from '../types/api';
+import { apiClient, unwrap } from './client';
+import type { ApiResponse, Category, CategoryRequest } from '../types/api';
 
+/** Todas as categorias activas. */
 export async function fetchCategories(): Promise<Category[]> {
   const { data } = await apiClient.get<ApiResponse<Category[]>>('/category');
-
-  return data.data;
+  return unwrap(data) ?? [];
 }
 
-export async function createCategory(dto: CreateCategoryDto): Promise<Category> {
+export async function createCategory(dto: CategoryRequest): Promise<Category> {
   const { data } = await apiClient.post<ApiResponse<Category>>('/category', dto);
-
-  return data.data;
+  return unwrap(data);
 }
 
-export async function deleteCategory(id: number): Promise<void> {
+export async function updateCategory(id: string, dto: CategoryRequest): Promise<Category> {
+  const { data } = await apiClient.put<ApiResponse<Category>>(`/category/${id}`, dto);
+  return unwrap(data);
+}
+
+/** Eliminação definitiva. Falha se a categoria ainda tiver produtos. */
+export async function deleteCategory(id: string): Promise<void> {
   await apiClient.delete(`/category/${id}`);
 }

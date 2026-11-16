@@ -1,21 +1,31 @@
-import { apiClient } from './client';
-import type { ApiResponse, Page, PickupPost } from '../types/api';
+import { apiClient, unwrap } from './client';
+import type { ApiResponse, PickupPost, PickupPostRequest } from '../types/api';
 
+/** Todos os postos de recolha activos (lojas Super7 onde se levanta a encomenda). */
 export async function fetchPickupPosts(): Promise<PickupPost[]> {
-  const all: PickupPost[] = [];
-  let page = 0;
-  let last = false;
+  const { data } = await apiClient.get<ApiResponse<PickupPost[]>>('/pickup-post/findList');
+  const posts = unwrap(data) ?? [];
+  return [...posts].sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+}
 
-  while (!last) {
-    const { data } = await apiClient.get<ApiResponse<Page<PickupPost>>>('/pickup-post', {
-      params: { page, size: 50 },
-    });
+/** Hoje a API só guarda `name`; zona, morada, horário e telefone são propostos. */
+export async function createPickupPost(dto: PickupPostRequest): Promise<PickupPost> {
+  const { data } = await apiClient.post<ApiResponse<PickupPost>>('/pickup-post', dto);
+  return unwrap(data);
+}
 
-    const pageData = data.data;
-    all.push(...pageData.content);
-    last = pageData.last;
-    page += 1;
-  }
+export async function updatePickupPost(id: string, dto: PickupPostRequest): Promise<PickupPost> {
+  const { data } = await apiClient.put<ApiResponse<PickupPost>>(`/pickup-post/${id}`, dto);
+  return unwrap(data);
+}
 
-  return all;
+/** Eliminação definitiva. */
+export async function deletePickupPost(id: string): Promise<void> {
+  await apiClient.delete(`/pickup-post/${id}`);
+}
+
+/** Texto curto da loja: "Talatona, Luanda · Todos os dias, 06h00–22h00". */
+export function pickupPostDetails(post: PickupPost | null | undefined): string {
+  if (!post) return '';
+  return [post.zone || post.address, post.openingHours].filter(Boolean).join(' · ');
 }

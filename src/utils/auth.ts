@@ -1,9 +1,28 @@
 import type { AuthUser } from '../types/api';
 
-const BACKOFFICE_ROLES = new Set(['MANAGER', 'ADMIN']);
+export type RoleName = 'ADMIN' | 'MANAGER' | 'SUPPORT' | 'FINANCE' | 'AUDITOR' | 'USER';
 
-export function canAccessBackoffice(user: AuthUser | null): boolean {
-  if (!user) return false;
+/** Perfis de equipa: entram no back-office. `USER` (registo público) não entra. */
+export const TEAM_ROLES: RoleName[] = ['ADMIN', 'MANAGER', 'SUPPORT', 'FINANCE', 'AUDITOR'];
 
-  return user.roles.some((role) => BACKOFFICE_ROLES.has(role.name));
+/** O que cada acção do back-office exige (tabela "Perfis e permissões" da documentação da API). */
+export const PERMISSIONS = {
+  viewOrders: TEAM_ROLES,
+  changeOrderStatus: ['ADMIN', 'MANAGER', 'SUPPORT'],
+  manageCatalog: ['ADMIN', 'MANAGER'],
+} satisfies Record<string, RoleName[]>;
+
+export type Permission = keyof typeof PERMISSIONS;
+
+export function hasRole(user: AuthUser | null | undefined, ...allowed: RoleName[]): boolean {
+  if (!user?.roles) return false;
+  return user.roles.some((role) => allowed.includes(role.name as RoleName));
+}
+
+export function can(user: AuthUser | null | undefined, permission: Permission): boolean {
+  return hasRole(user, ...PERMISSIONS[permission]);
+}
+
+export function canAccessBackoffice(user: AuthUser | null | undefined): boolean {
+  return hasRole(user, ...TEAM_ROLES);
 }

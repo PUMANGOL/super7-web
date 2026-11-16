@@ -1,7 +1,7 @@
 {
-  "name": "pumangol-livros",
+  "name": "super7-digital",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -14,10 +14,8 @@
     "axios": "^1.18.0",
     "lucide-react": "^1.21.0",
     "react": "^19.2.6",
-    "react-content-loader": "^7.1.2",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.18.0",
-    "typewriter-effect": "^2.22.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

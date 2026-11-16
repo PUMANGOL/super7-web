@@ -1,0 +1,254 @@
+/* ==========================================================================
+   super7digital — complementos da aplicação React (super7-app.css)
+   Carregado depois de super7.css. Não altera o layout original: só acrescenta
+   o que a versão estática não tinha (carregamento, estados da API, elementos
+   novos do checkout e da encomenda) e corrige a convivência com o back-office.
+   ========================================================================== */
+
+/* Estrutura: o rodapé fica no fundo mesmo em páginas curtas */
+.s7-loja {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--s7-fundo);
+}
+.s7-loja > main {
+  flex: 1 0 auto;
+}
+.s7-loja > main > .s7-vazio:last-child,
+.s7-loja > main > .s7-carrinho:last-child,
+.s7-loja > main > .s7-carregar:last-child,
+.s7-loja > main > .s7-detalhe:last-child {
+  margin-bottom: clamp(48px, 7vw, 88px);
+}
+
+/* O reset do back-office (index.css) tira o sublinhado a todos os links */
+.s7-faixa a {
+  text-decoration: underline;
+}
+
+/* As secções com âncora ficam visíveis debaixo do cabeçalho fixo */
+.s7-seccao[id] {
+  scroll-margin-top: 140px;
+}
+
+.s7-texto-longo {
+  white-space: pre-line;
+}
+
+/* Cabaz sem nível definido: fita vermelha de Natal */
+.s7-cabaz:not(.s7-cabaz--ouro):not(.s7-cabaz--prata):not(.s7-cabaz--bronze),
+.s7-detalhe--cabaz:not(.s7-detalhe--ouro):not(.s7-detalhe--prata):not(.s7-detalhe--bronze) {
+  --s7-nivel: var(--s7-vermelho);
+  --s7-nivel-claro: var(--s7-vermelho-claro);
+}
+.s7-cabaz--esgotado .s7-cabaz__media img {
+  opacity: 0.55;
+}
+/* super7.css estiliza sempre o último chip como "+ N produtos"; com poucos artigos, o último é um artigo normal */
+.s7-cabaz__itens li:last-child:not(.s7-cabaz__mais) {
+  padding-inline: 10px;
+  background: var(--s7-fundo);
+  font-weight: inherit;
+  color: var(--s7-tinta-2);
+}
+
+/* Carregamento ------------------------------------------------------------ */
+.s7-carregar {
+  padding: 56px 0;
+  text-align: center;
+  color: var(--s7-tinta-2);
+}
+.s7-esqueleto {
+  pointer-events: none;
+}
+.s7-esqueleto:hover {
+  transform: none;
+  box-shadow: none;
+}
+.s7-esqueleto .s7-produto__media,
+.s7-esqueleto .s7-cabaz__media,
+.s7-esqueleto .s7-detalhe__media,
+.s7-esqueleto__linha,
+.s7-categoria.s7-esqueleto {
+  background: linear-gradient(90deg, var(--s7-fundo) 0%, #e9ece4 50%, var(--s7-fundo) 100%) 0 0 / 200% 100%;
+  animation: s7-brilho 1.4s ease-in-out infinite;
+}
+.s7-esqueleto .s7-cabaz__media::after {
+  display: none;
+}
+.s7-esqueleto__linha {
+  display: block;
+  width: 100%;
+  height: 12px;
+  margin: 6px 0;
+  border-radius: 999px;
+}
+.s7-esqueleto__linha--curta {
+  width: 40%;
+}
+.s7-esqueleto__linha--media {
+  width: 70%;
+}
+.s7-esqueleto__linha--titulo {
+  width: 80%;
+  height: 32px;
+}
+.s7-categoria.s7-esqueleto {
+  min-height: 118px;
+}
+@keyframes s7-brilho {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Paginação com reticências */
+.s7-paginacao {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.s7-paginacao__reticencias {
+  min-width: 24px;
+  text-align: center;
+  color: var(--s7-tinta-3);
+}
+
+/* Home: hero sem campanha e lista "Por que visitar" das lojas ------------ */
+.s7-hero__fotos {
+  align-self: center;
+}
+.s7-lojas__lista {
+  display: grid;
+  gap: 10px;
+}
+.s7-lojas__lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.88);
+}
+.s7-lojas__lista .s7-ico {
+  margin-top: 2px;
+  color: #f6c85f;
+}
+
+/* Carrinho e checkout ----------------------------------------------------- */
+.s7-carrinho__continuar {
+  margin-top: 16px;
+}
+.s7-passo__info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--s7-raio);
+  background: var(--s7-verde-claro);
+  color: var(--s7-tinta-2);
+}
+.s7-passo__info .s7-ico {
+  width: 24px;
+  height: 24px;
+  color: var(--s7-verde);
+}
+.s7-passo__info strong {
+  color: var(--s7-tinta);
+}
+.s7-passo__info--depois {
+  margin-top: 16px;
+}
+/* Opção única e já escolhida (pagamento na loja) */
+.s7-opcao--fixa {
+  cursor: default;
+}
+.s7-opcao--fixa .s7-opcao__caixa {
+  border-color: var(--s7-verde);
+  background: var(--s7-verde-claro);
+  box-shadow: inset 0 0 0 1px var(--s7-verde);
+}
+.s7-opcao--fixa .s7-opcao__caixa .s7-ico {
+  color: var(--s7-verde);
+}
+.s7-campo .s7-ligacao {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.s7-alerta {
+  display: grid;
+  gap: 4px;
+}
+
+/* Encomenda --------------------------------------------------------------- */
+.s7-pagina-titulo--etapas {
+  justify-content: flex-end;
+  padding-bottom: 16px;
+}
+.s7-confirmacao__ref b {
+  font-size: var(--s7-t-s);
+  overflow-wrap: anywhere;
+}
+.s7-confirmacao--cancelada {
+  background: var(--s7-tinta);
+}
+.s7-confirmacao--cancelada .s7-confirmacao__ico {
+  background: var(--s7-vermelho-claro);
+  color: var(--s7-vermelho-escuro);
+}
+.s7-bloco > .s7-bloco__nota {
+  max-width: none;
+}
+.s7-bloco__nota {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--s7-linha);
+  font-size: var(--s7-t-s);
+}
+.s7-bloco__nota .s7-ico {
+  color: var(--s7-verde);
+}
+.s7-consulta__accoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.s7-consulta__recentes {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--s7-linha);
+}
+.s7-consulta__recentes h2 {
+  font-size: var(--s7-t-m);
+  font-weight: 800;
+}
+.s7-consulta__recentes ul {
+  display: grid;
+  gap: 8px;
+}
+.s7-consulta__recentes a {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--s7-linha);
+  border-radius: var(--s7-raio-s);
+  text-decoration: none;
+}
+.s7-consulta__recentes a:hover {
+  border-color: var(--s7-verde);
+  background: var(--s7-verde-claro);
+}
+.s7-consulta__recentes strong {
+  font-family: var(--s7-fonte-display);
+}
+.s7-consulta__recentes span {
+  font-size: var(--s7-t-s);
+  color: var(--s7-tinta-3);
+}

@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+/* Estilos base do back-office e do login. A loja usa assets/css/super7.css
+   (que também carrega as fontes Montserrat e Figtree, alojadas no projecto). */
 
 :root {
   --pumangol-green: #057143;

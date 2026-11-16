@@ -1,4 +1,4 @@
-import type { ToastType } from '../../context/ToastContext';
+import type { ToastType } from '../../context/toast';
 
 interface ToastItem {
   id: number;

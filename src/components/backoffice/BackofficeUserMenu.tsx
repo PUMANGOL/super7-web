@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronUp, LogOut, User } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/auth';
+import { useToast } from '../../context/toast';
 import './BackofficeUserMenu.css';
 
 interface BackofficeUserMenuProps {
@@ -62,7 +62,7 @@ export function BackofficeUserMenu({ collapsed = false }: BackofficeUserMenuProp
             role="menuitem"
             onClick={() => setIsOpen(false)}
           >
-            Ir para o site
+            Ir para a loja
           </Link>
           <div className="backoffice-user-dropdown-divider" role="separator" />
           <button

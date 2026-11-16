@@ -1,0 +1,202 @@
+/**
+ * Configuração da loja Super7 Digital.
+ *
+ * A API ainda não tem o conceito de campanha. As datas e os textos das campanhas
+ * vivem aqui; a ligação entre um produto e uma campanha faz-se com atributos do
+ * produto (ver `PRODUCT_ATTRIBUTES` e `src/catalog/attributes.ts`).
+ */
+
+export type CampaignId = 'natal' | 'escoamento';
+
+export interface Campaign {
+  id: CampaignId;
+  /** Nome da campanha, por exemplo na faixa do topo. */
+  name: string;
+  /** Texto curto para menus e filtros. */
+  label: string;
+  /** Frase que aparece no cabeçalho temático do catálogo. */
+  tagline: string;
+  /** Descrição da listagem da campanha no catálogo. */
+  description: string;
+  /** Primeiro dia da campanha (AAAA-MM-DD, inclusive). */
+  startsOn: string;
+  /** Último dia da campanha (AAAA-MM-DD, inclusive). */
+  endsOn: string;
+  /** Prazo das encomendas, para a contagem decrescente (ISO 8601 com fuso). */
+  ordersUntil?: string;
+  /** Vem de `GET /campaign`; `false` desliga a campanha mesmo dentro das datas. */
+  active?: boolean;
+}
+
+export const CAMPAIGNS: Record<CampaignId, Campaign> = {
+  natal: {
+    id: 'natal',
+    name: 'Campanha Boas Festas',
+    label: 'Cabazes de Natal',
+    tagline: 'Cabazes prontos a oferecer, com laço e cartão.',
+    description: 'Cabazes para oferecer a clientes, colaboradores e família.',
+    startsOn: '2026-11-01',
+    endsOn: '2026-12-31',
+    ordersUntil: '2026-12-23T18:00:00+01:00',
+  },
+  escoamento: {
+    id: 'escoamento',
+    name: 'Campanha de escoamento',
+    label: 'Escoamento',
+    tagline: 'Descontos enquanto houver stock nas lojas.',
+    description: 'Produtos seleccionados com desconto, enquanto houver stock.',
+    startsOn: '2026-11-01',
+    endsOn: '2026-12-31',
+  },
+};
+
+export const CAMPAIGN_IDS = Object.keys(CAMPAIGNS) as CampaignId[];
+
+export function isCampaignId(value: string | null | undefined): value is CampaignId {
+  return value === 'natal' || value === 'escoamento';
+}
+
+/** A campanha está activa entre `startsOn` e o fim do dia `endsOn` (hora de Luanda). */
+export function isCampaignActive(campaign: Campaign, now: Date = new Date()): boolean {
+  if (campaign.active === false) return false;
+  const start = new Date(`${campaign.startsOn}T00:00:00+01:00`).getTime();
+  const end = new Date(`${campaign.endsOn}T23:59:59+01:00`).getTime();
+  const time = now.getTime();
+  return time >= start && time <= end;
+}
+
+/**
+ * Categorias cujos produtos são cabazes. Um produto também conta como cabaz
+ * quando tem o atributo `nivel` (ouro, prata ou bronze).
+ */
+export const CABAZ_CATEGORY_SLUGS = ['cabazes', 'cabazes-de-natal', 'cabazes-natal'];
+
+/**
+ * Atributos do produto (`attributes` na API) que a loja interpreta.
+ * O back-office grava estes nomes; a leitura aceita também variantes com
+ * maiúsculas, acentos, espaços ou hífenes (por exemplo "Preço anterior").
+ */
+export const PRODUCT_ATTRIBUTES = {
+  /** natal, escoamento — separados por vírgula */
+  campaigns: 'campanha',
+  /** Preço antes do desconto, em kwanzas. Só conta se for maior que o preço actual. */
+  previousPrice: 'preco_anterior',
+  /** Stock no início do escoamento, para a barra "Restam N unidades". */
+  initialStock: 'stock_inicial',
+  /** Embalagem ou quantidade: "500 g", "6 × 1,5 L", "14 produtos". */
+  format: 'formato',
+  /** Nível do cabaz: ouro, prata ou bronze. */
+  level: 'nivel',
+  /** Etiqueta de destaque no cartão do cabaz: "O mais completo". */
+  badge: 'selo',
+  /** Frase curta para o cartão e o topo da página do produto (até 255 caracteres). */
+  summary: 'resumo',
+  /** Um atributo por artigo do cabaz: "2 × Arroz branco 1 kg". */
+  item: 'item',
+  /** "sim" para aparecer nos destaques da página inicial. */
+  featured: 'destaque',
+} as const;
+
+export const STORE = {
+  name: 'Super7 Digital',
+  /** Quantidade máxima por linha do carrinho. */
+  maxQuantity: 99,
+  /** Produtos por página no catálogo. */
+  pageSize: 12,
+} as const;
+
+/* ---------------------------------------------------------------------------
+   Funcionalidades da API ainda por implementar no backend
+   (ver docs/api-campos-em-falta.md)
+   ---------------------------------------------------------------------------
+   Os campos novos nos pedidos e nas respostas são usados sempre que existem: a
+   API actual ignora campos desconhecidos e o frontend lê-os quando aparecerem.
+   Os endpoints novos só são chamados quando estiverem activos na variável de
+   ambiente `api_features` (lista separada por vírgulas), para não gerar erros
+   404 enquanto não existirem:
+
+     campaigns          GET /campaign                datas e textos das campanhas
+     checkout-options   GET /checkout/options        taxa e zonas de entrega, métodos de pagamento
+     order-tracking     GET /order/{id}/tracking     estado da encomenda para o cliente, sem sessão
+     order-fields       POST /order com os campos novos gravados: deixa de copiar
+                        entrega, pagamento, NIF e oferta para as observações (`notes`)
+*/
+export type ApiFeature = 'campaigns' | 'checkout-options' | 'order-tracking' | 'order-fields';
+
+const ENABLED_FEATURES = new Set(
+  String(import.meta.env.api_features ?? '')
+    .split(',')
+    .map((feature) => feature.trim())
+    .filter(Boolean),
+);
+
+export function hasApiFeature(feature: ApiFeature): boolean {
+  return ENABLED_FEATURES.has(feature);
+}
+
+export type DeliveryType = 'PICKUP' | 'HOME_DELIVERY';
+export type PaymentMethod = 'MULTICAIXA_EXPRESS' | 'REFERENCE' | 'IN_STORE';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  MULTICAIXA_EXPRESS: 'Multicaixa Express',
+  REFERENCE: 'Pagamento por referência',
+  IN_STORE: 'Pagar na loja',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: 'por pagar',
+  PAID: 'pago',
+  FAILED: 'falhou',
+  EXPIRED: 'expirou',
+};
+
+export interface CheckoutOptions {
+  homeDelivery: {
+    enabled: boolean;
+    /** Taxa de entrega ao domicílio, em kwanzas. */
+    fee: number;
+    /** Zonas servidas, só para informação do cliente. */
+    zones: string[];
+  };
+  /** Métodos de pagamento oferecidos, por esta ordem. `IN_STORE` só aparece com levantamento. */
+  paymentMethods: PaymentMethod[];
+  giftMessageMaxLength: number;
+}
+
+/**
+ * Opções do checkout enquanto `GET /checkout/options` não existir (valores do layout).
+ * Para retirar um método de pagamento ou a entrega ao domicílio antes de o backend
+ * os suportar, altere aqui.
+ */
+export const DEFAULT_CHECKOUT_OPTIONS: CheckoutOptions = {
+  homeDelivery: { enabled: true, fee: 2500, zones: ['Luanda'] },
+  paymentMethods: ['MULTICAIXA_EXPRESS', 'REFERENCE', 'IN_STORE'],
+  giftMessageMaxLength: 240,
+};
+
+/** Limites dos campos do checkout. `notes` é o limite da API para as observações. */
+export const CHECKOUT_LIMITS = {
+  notes: 500,
+  nif: 20,
+  recipient: 60,
+  observations: 160,
+  address: 160,
+  district: 80,
+  addressReference: 120,
+} as const;
+
+/** Ícones do sprite que podem ser atribuídos a uma categoria no back-office. */
+export const CATEGORY_ICONS = [
+  { value: 'box', label: 'Caixa (genérico)' },
+  { value: 'gift', label: 'Presente (cabazes, ofertas)' },
+  { value: 'basket', label: 'Cesto (mercearia)' },
+  { value: 'bottle', label: 'Garrafa (bebidas)' },
+  { value: 'cookie', label: 'Bolacha (snacks e doces)' },
+  { value: 'sparkles', label: 'Brilho (higiene e casa)' },
+  { value: 'drop', label: 'Gota (auto e lubrificantes)' },
+  { value: 'book', label: 'Livro (livros)' },
+  { value: 'tag', label: 'Etiqueta (promoções)' },
+] as const;
+
+export type CategoryIcon = (typeof CATEGORY_ICONS)[number]['value'];

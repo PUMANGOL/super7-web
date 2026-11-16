@@ -1,20 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastProvider } from './context/ToastContext';
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
-import { Layout } from './components/layout/Layout';
-import { BackofficeRoute } from './components/auth/BackofficeRoute';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BackofficeRoute, RequirePermission } from './components/auth/BackofficeRoute';
 import { MetaPixelTracker } from './components/MetaPixelTracker';
-import { HomePage } from './pages/HomePage';
+import { IconSprite } from './components/store/Icon';
+import { StoreLayout } from './components/store/StoreLayout';
+import { AuthProvider } from './context/AuthProvider';
+import { CartProvider } from './context/CartProvider';
+import { ToastProvider } from './context/ToastProvider';
 import { LoginPage } from './pages/LoginPage';
-import { SignUpPage } from './pages/SignUpPage';
-import { ConfirmationPage } from './pages/ConfirmationPage';
-import { OrderDetailPage } from './pages/OrderDetailPage';
-import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
-import { BackofficeOrdersPage } from './pages/backoffice/BackofficeOrdersPage';
-import { BackofficeBooksPage } from './pages/backoffice/BackofficeBooksPage';
-import { BackofficeAddBookPage } from './pages/backoffice/BackofficeAddBookPage';
-import { BackofficeCategoriesPage } from './pages/backoffice/BackofficeCategoriesPage';
+import { CartPage } from './pages/store/CartPage';
+import { CatalogPage } from './pages/store/CatalogPage';
+import { CheckoutPage } from './pages/store/CheckoutPage';
+import { HomePage } from './pages/store/HomePage';
+import { LegacyConfirmationRedirect, NotFoundPage } from './pages/store/NotFoundPage';
+import { OrderPage } from './pages/store/OrderPage';
+import { ProductPage } from './pages/store/ProductPage';
+
+/* O back-office é carregado à parte: os clientes da loja não descarregam este código. */
+const BackofficeLayout = lazy(() =>
+  import('./components/backoffice/BackofficeLayout').then((module) => ({ default: module.BackofficeLayout })),
+);
+const BackofficeOrdersPage = lazy(() =>
+  import('./pages/backoffice/BackofficeOrdersPage').then((module) => ({ default: module.BackofficeOrdersPage })),
+);
+const BackofficeProductsPage = lazy(() =>
+  import('./pages/backoffice/BackofficeProductsPage').then((module) => ({ default: module.BackofficeProductsPage })),
+);
+const BackofficeProductFormPage = lazy(() =>
+  import('./pages/backoffice/BackofficeProductFormPage').then((module) => ({ default: module.BackofficeProductFormPage })),
+);
+const BackofficeBooksPage = lazy(() =>
+  import('./pages/backoffice/BackofficeBooksPage').then((module) => ({ default: module.BackofficeBooksPage })),
+);
+const BackofficeAddBookPage = lazy(() =>
+  import('./pages/backoffice/BackofficeAddBookPage').then((module) => ({ default: module.BackofficeAddBookPage })),
+);
+const BackofficeCategoriesPage = lazy(() =>
+  import('./pages/backoffice/BackofficeCategoriesPage').then((module) => ({ default: module.BackofficeCategoriesPage })),
+);
+const BackofficePickupPostsPage = lazy(() =>
+  import('./pages/backoffice/BackofficePickupPostsPage').then((module) => ({ default: module.BackofficePickupPostsPage })),
+);
+
+function BackofficeLoading() {
+  return (
+    <div className="auth-loading">
+      <p>A carregar o back-office…</p>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -22,30 +56,93 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <BrowserRouter>
+            <IconSprite />
             <MetaPixelTracker />
             <Routes>
               <Route path="login" element={<LoginPage />} />
-              <Route path="cadastro" element={<SignUpPage />} />
-              <Route element={<Layout />}>
-                <Route index element={<HomePage />} />
-                <Route path="catalogo" element={<Navigate to="/#catalogo" replace />} />
-                <Route path="encomenda" element={<Navigate to="/#encomenda" replace />} />
-                <Route path="confirmacao/:orderId" element={<ConfirmationPage />} />
-                <Route path="encomenda/:orderId" element={<OrderDetailPage />} />
-                <Route
-                  path="backoffice"
-                  element={(
-                    <BackofficeRoute>
+              <Route path="cadastro" element={<Navigate to="/login" replace />} />
+
+              <Route
+                path="backoffice"
+                element={
+                  <BackofficeRoute>
+                    <Suspense fallback={<BackofficeLoading />}>
                       <BackofficeLayout />
-                    </BackofficeRoute>
-                  )}
-                >
-                  <Route index element={<Navigate to="encomendas" replace />} />
-                  <Route path="encomendas" element={<BackofficeOrdersPage />} />
-                  <Route path="livros" element={<BackofficeBooksPage />} />
-                  <Route path="livros/novo" element={<BackofficeAddBookPage />} />
-                  <Route path="categorias" element={<BackofficeCategoriesPage />} />
-                </Route>
+                    </Suspense>
+                  </BackofficeRoute>
+                }
+              >
+                <Route index element={<Navigate to="encomendas" replace />} />
+                <Route path="encomendas" element={<BackofficeOrdersPage />} />
+                <Route
+                  path="produtos"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeProductsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="produtos/novo"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeProductFormPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="produtos/:id"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeProductFormPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="livros"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeBooksPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="livros/novo"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeAddBookPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="categorias"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficeCategoriesPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="postos"
+                  element={
+                    <RequirePermission permission="manageCatalog">
+                      <BackofficePickupPostsPage />
+                    </RequirePermission>
+                  }
+                />
+              </Route>
+
+              <Route element={<StoreLayout />}>
+                <Route index element={<HomePage />} />
+                <Route path="catalogo" element={<CatalogPage />} />
+                <Route path="produto/:id" element={<ProductPage />} />
+                <Route path="carrinho" element={<CartPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="encomenda" element={<OrderPage />} />
+                {/* Link enviado nos e-mails da API (app.order.tracking-url). */}
+                <Route path="encomenda/:id" element={<OrderPage />} />
+                <Route path="confirmacao/:orderId" element={<LegacyConfirmationRedirect />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>
           </BrowserRouter>
