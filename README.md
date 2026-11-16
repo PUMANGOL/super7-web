@@ -11,11 +11,40 @@ React 19 · TypeScript · Vite · React Router · TanStack Query · Axios. Liga-
 
 ```bash
 npm install
-cp .env.example .env      # URL da API em api_url; funcionalidades novas da API em api_features
+cp .env.example .env      # URL da API em VITE_API_URL; funcionalidades novas da API em api_features
 npm run dev               # http://localhost:4200
-npm run build             # verificação de tipos + build de produção em dist/
+npm run build             # verificação de tipos + build de produção em dist/ (falha sem VITE_API_URL)
 npm run lint
 ```
+
+## Publicação (Vercel)
+
+A Vercel publica directamente do GitHub (`PUMANGOL/super7-web`): cada push para `main` vai para produção;
+as outras branches e os pull requests ficam num endereço de pré-visualização.
+
+1. Na Vercel, **Add New → Project** e importar `PUMANGOL/super7-web`. A app da Vercel no GitHub tem de ter
+   acesso à organização PUMANGOL.
+2. **Project Name: `super7digital`.** A API só aceita pedidos (CORS) de `https://super7digital.vercel.app`;
+   com outro nome a loja abre, mas sem dados.
+3. Framework, comando (`npm run build`) e pasta (`dist`) são detectados (`vercel.json` fixa o Vite).
+   Node.js 22 ou mais recente.
+4. **Settings → Environment Variables**, no ambiente Production (e em Preview, se se quiserem pré-visualizações):
+
+   | Variável | Valor |
+   | --- | --- |
+   | `VITE_API_URL` | `https://portal.pumangol.co.ao/api/book-store` |
+   | `api_features` | `campaigns,checkout-options,order-tracking,order-fields` |
+
+   Os valores ficam fixos no build: depois de os mudar, é preciso publicar de novo (**Redeploy**).
+
+O `vercel.json` serve `index.html` em todas as rotas (React Router), excepto em `/assets/`. Os ficheiros com
+hash ficam aí, com cache de um ano, e um ficheiro em falta dá 404 em vez de devolver o HTML.
+
+Do lado da API (equipa do backend):
+
+- `APP_CORS_ALLOWED_ORIGINS` já inclui `https://super7digital.vercel.app`. As pré-visualizações
+  (`super7digital-git-….vercel.app`) e um domínio próprio, se vier a existir, têm de ser acrescentados.
+- `app.order.tracking-url` deve apontar para `https://super7digital.vercel.app/encomenda/{id}` (o link dos e-mails).
 
 ## Estrutura
 

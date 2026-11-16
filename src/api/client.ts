@@ -36,7 +36,7 @@ export function clearAuth(): void {
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.api_url,
+  baseURL: import.meta.env.VITE_API_URL || import.meta.env.api_url,
   headers: {
     'Content-Type': 'application/json',
   },
