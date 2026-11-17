@@ -335,34 +335,34 @@
 }
 
 /* Ponteiro dos 2 minutos do Multicaixa Express (PaymentAttempt.tsx) */
-.s7-contagem {
+.s7-cronometro {
   display: flex;
   align-items: center;
   gap: 20px;
 }
-.s7-contagem__mostrador {
+.s7-cronometro__mostrador {
   flex: none;
   width: 120px;
   height: 120px;
 }
-.s7-contagem__fundo {
+.s7-cronometro__fundo {
   fill: var(--s7-papel);
   stroke: var(--s7-linha);
   stroke-width: 8;
 }
-.s7-contagem__arco {
+.s7-cronometro__arco {
   fill: none;
   stroke: var(--s7-verde);
   stroke-width: 8;
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear, stroke-dasharray 1s linear, stroke 0.3s;
 }
-.s7-contagem__marca {
+.s7-cronometro__marca {
   stroke: var(--s7-linha-forte);
   stroke-width: 2;
   stroke-linecap: round;
 }
-.s7-contagem__ponteiro {
+.s7-cronometro__ponteiro {
   stroke: var(--s7-tinta);
   stroke-width: 3.5;
   stroke-linecap: round;
@@ -370,42 +370,42 @@
   transform-origin: 50% 50%;
   transition: transform 1s linear;
 }
-.s7-contagem__eixo {
+.s7-cronometro__eixo {
   fill: var(--s7-tinta);
 }
-.s7-contagem--fim .s7-contagem__arco {
+.s7-cronometro--fim .s7-cronometro__arco {
   stroke: var(--s7-vermelho);
 }
-.s7-contagem--fim .s7-contagem__ponteiro,
-.s7-contagem--fim .s7-contagem__eixo {
+.s7-cronometro--fim .s7-cronometro__ponteiro,
+.s7-cronometro--fim .s7-cronometro__eixo {
   stroke: var(--s7-vermelho-escuro);
   fill: var(--s7-vermelho-escuro);
 }
-.s7-contagem__texto {
+.s7-cronometro__texto {
   display: grid;
   gap: 2px;
 }
-.s7-contagem__texto strong {
+.s7-cronometro__texto strong {
   font: 800 2.25rem / 1 var(--s7-fonte-display);
   font-variant-numeric: tabular-nums;
   color: var(--s7-tinta);
 }
-.s7-contagem--fim .s7-contagem__texto strong {
+.s7-cronometro--fim .s7-cronometro__texto strong {
   color: var(--s7-vermelho-escuro);
 }
-.s7-contagem__texto span {
+.s7-cronometro__texto span {
   font-weight: 700;
   color: var(--s7-tinta);
 }
-.s7-contagem__texto small {
+.s7-cronometro__texto small {
   font-size: var(--s7-t-s);
   color: var(--s7-tinta-3);
 }
 @media (max-width: 380px) {
-  .s7-contagem {
+  .s7-cronometro {
     gap: 14px;
   }
-  .s7-contagem__mostrador {
+  .s7-cronometro__mostrador {
     width: 96px;
     height: 96px;
   }

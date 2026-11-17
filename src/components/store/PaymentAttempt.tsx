@@ -25,12 +25,12 @@ export function ExpressCountdown({ secondsLeft, expiresAt }: { secondsLeft: numb
   const urgent = secondsLeft <= 30;
 
   return (
-    <div className={urgent ? 's7-contagem s7-contagem--fim' : 's7-contagem'}>
-      <svg className="s7-contagem__mostrador" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-        <circle className="s7-contagem__fundo" cx="60" cy="60" r={DIAL_RADIUS} />
+    <div className={urgent ? 's7-cronometro s7-cronometro--fim' : 's7-cronometro'}>
+      <svg className="s7-cronometro__mostrador" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle className="s7-cronometro__fundo" cx="60" cy="60" r={DIAL_RADIUS} />
         {/* Começa às 12 horas; o que já passou fica de fora do arco. */}
         <circle
-          className="s7-contagem__arco"
+          className="s7-cronometro__arco"
           cx="60"
           cy="60"
           r={DIAL_RADIUS}
@@ -40,7 +40,7 @@ export function ExpressCountdown({ secondsLeft, expiresAt }: { secondsLeft: numb
         {Array.from({ length: 12 }, (_, index) => (
           <line
             key={index}
-            className="s7-contagem__marca"
+            className="s7-cronometro__marca"
             x1="60"
             y1="15"
             x2="60"
@@ -49,17 +49,17 @@ export function ExpressCountdown({ secondsLeft, expiresAt }: { secondsLeft: numb
           />
         ))}
         <line
-          className="s7-contagem__ponteiro"
+          className="s7-cronometro__ponteiro"
           x1="60"
           y1="60"
           x2="60"
           y2="21"
           style={{ transform: `rotate(${(1 - fraction) * 360}deg)` }}
         />
-        <circle className="s7-contagem__eixo" cx="60" cy="60" r="4.5" />
+        <circle className="s7-cronometro__eixo" cx="60" cy="60" r="4.5" />
       </svg>
       <p
-        className="s7-contagem__texto"
+        className="s7-cronometro__texto"
         role="timer"
         aria-label={`Faltam ${plural(Math.floor(secondsLeft / 60), 'minuto', 'minutos')} e ${plural(secondsLeft % 60, 'segundo', 'segundos')} para aceitar o pagamento`}
       >
