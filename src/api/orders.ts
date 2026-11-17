@@ -1,5 +1,6 @@
 import { apiClient, unwrap } from './client';
-import type { ApiOrder, ApiResponse, OrderRequest, Page } from '../types/api';
+import type { PaymentStatus } from '../config/store';
+import type { ApiOrder, ApiResponse, OrderPayment, OrderRequest, Page } from '../types/api';
 
 /** Checkout público: responde 201 com a encomenda em estado `Pendente`. */
 export async function createOrder(payload: OrderRequest): Promise<ApiOrder> {
@@ -39,6 +40,34 @@ export async function fetchAllOrders(): Promise<ApiOrder[]> {
   }
 
   return all;
+}
+
+/**
+ * Transferência bancária (IBAN): o cliente envia o comprovativo, PDF ou imagem até 10 MB. Público, como o seguimento.
+ * Um novo envio substitui o anterior enquanto o pagamento estiver por confirmar.
+ */
+export async function uploadPaymentProof(id: string, file: File): Promise<OrderPayment> {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await apiClient.post<ApiResponse<OrderPayment>>(`/order/${id}/payment-proof`, form);
+  return unwrap(data);
+}
+
+/** Equipa: o comprovativo tal como foi enviado (PDF ou imagem). */
+export async function fetchPaymentProof(id: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/order/${id}/payment-proof`, { responseType: 'blob' });
+  return data;
+}
+
+/**
+ * Equipa (ADMIN, MANAGER, FINANCE): `PAID` confirma o pagamento; `FAILED` recusa-o e cancela a encomenda
+ * (devolve o stock). O cliente recebe um e-mail.
+ */
+export async function updatePaymentStatus(id: string, status: PaymentStatus): Promise<ApiOrder> {
+  const { data } = await apiClient.put<ApiResponse<ApiOrder>>(`/order/${id}/payment-status`, null, {
+    params: { status },
+  });
+  return unwrap(data);
 }
 
 /** Muda o estado e envia um email ao cliente. */

@@ -40,68 +40,72 @@ export function BackofficeUserMenu({ collapsed = false }: BackofficeUserMenuProp
 
   if (!user) return null;
 
+  // Volta ao login (e não à loja): num computador partilhado, a pessoa seguinte entra logo.
+  // `replace` impede que o botão "Retroceder" reabra a página do back-office.
   const handleLogout = () => {
     setIsOpen(false);
     logout();
     showToast('Sessão terminada.');
-    navigate('/');
+    navigate('/login', { replace: true });
   };
 
   return (
-    <div className="backoffice-user-menu" ref={menuRef}>
-      {isOpen && (
-        <div className="backoffice-user-dropdown" role="menu">
-          <div className="backoffice-user-dropdown-info">
-            <strong>{user.name}</strong>
-            <span>{user.email}</span>
+    <>
+      <div className="backoffice-user-menu" ref={menuRef}>
+        {isOpen && (
+          <div className="backoffice-user-dropdown" role="menu">
+            <div className="backoffice-user-dropdown-info">
+              <strong>{user.name}</strong>
+              <span>{user.email}</span>
+            </div>
+            <div className="backoffice-user-dropdown-divider" role="separator" />
+            <Link
+              to="/"
+              className="backoffice-user-dropdown-item"
+              role="menuitem"
+              onClick={() => setIsOpen(false)}
+            >
+              Ir para a loja
+            </Link>
           </div>
-          <div className="backoffice-user-dropdown-divider" role="separator" />
-          <Link
-            to="/"
-            className="backoffice-user-dropdown-item"
-            role="menuitem"
-            onClick={() => setIsOpen(false)}
-          >
-            Ir para a loja
-          </Link>
-          <div className="backoffice-user-dropdown-divider" role="separator" />
-          <button
-            type="button"
-            className="backoffice-user-dropdown-logout"
-            role="menuitem"
-            onClick={handleLogout}
-          >
-            <LogOut size={16} />
-            Terminar sessão
-          </button>
-        </div>
-      )}
+        )}
+
+        <button
+          type="button"
+          className={`backoffice-user-trigger${isOpen ? ' backoffice-user-trigger--active' : ''}`}
+          onClick={() => setIsOpen((open) => !open)}
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          title={collapsed ? user.name : undefined}
+        >
+          <span className="backoffice-user-trigger-icon" aria-hidden="true">
+            <User size={18} />
+          </span>
+          {!collapsed && (
+            <>
+              <span className="backoffice-user-trigger-text">
+                <strong>{user.name}</strong>
+                <span>{user.email}</span>
+              </span>
+              <ChevronUp
+                size={16}
+                className={`backoffice-user-trigger-chevron${isOpen ? ' backoffice-user-trigger-chevron--open' : ''}`}
+                aria-hidden="true"
+              />
+            </>
+          )}
+        </button>
+      </div>
 
       <button
         type="button"
-        className={`backoffice-user-trigger${isOpen ? ' backoffice-user-trigger--active' : ''}`}
-        onClick={() => setIsOpen((open) => !open)}
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        title={collapsed ? user.name : undefined}
+        className="backoffice-sidebar-link backoffice-sidebar-logout"
+        onClick={handleLogout}
+        title={collapsed ? 'Terminar sessão' : undefined}
       >
-        <span className="backoffice-user-trigger-icon" aria-hidden="true">
-          <User size={18} />
-        </span>
-        {!collapsed && (
-          <>
-            <span className="backoffice-user-trigger-text">
-              <strong>{user.name}</strong>
-              <span>{user.email}</span>
-            </span>
-            <ChevronUp
-              size={16}
-              className={`backoffice-user-trigger-chevron${isOpen ? ' backoffice-user-trigger-chevron--open' : ''}`}
-              aria-hidden="true"
-            />
-          </>
-        )}
+        <LogOut size={18} aria-hidden="true" />
+        <span className="backoffice-sidebar-link-label">Terminar sessão</span>
       </button>
-    </div>
+    </>
   );
 }

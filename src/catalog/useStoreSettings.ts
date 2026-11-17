@@ -7,6 +7,7 @@ import {
   DEFAULT_CHECKOUT_OPTIONS,
   hasApiFeature,
   isCampaignActive,
+  STORE_PAYMENT_METHODS,
   type Campaign,
   type CampaignId,
   type CheckoutOptions,
@@ -61,9 +62,8 @@ export function useCampaigns(): CampaignsState {
 }
 
 function mapCheckoutOptions(remote: ApiCheckoutOptions): CheckoutOptions {
-  const methods = (remote.paymentMethods ?? []).filter((method) =>
-    ['MULTICAIXA_EXPRESS', 'REFERENCE', 'IN_STORE'].includes(method),
-  );
+  const methods = (remote.paymentMethods ?? []).filter((method) => STORE_PAYMENT_METHODS.includes(method));
+  const bank = remote.bankTransfer;
   return {
     homeDelivery: {
       enabled: Boolean(remote.homeDeliveryEnabled),
@@ -71,7 +71,13 @@ function mapCheckoutOptions(remote: ApiCheckoutOptions): CheckoutOptions {
       zones: remote.homeDeliveryZones ?? [],
     },
     paymentMethods: methods.length ? methods : DEFAULT_CHECKOUT_OPTIONS.paymentMethods,
+    giftEnabled: remote.giftEnabled ?? DEFAULT_CHECKOUT_OPTIONS.giftEnabled,
     giftMessageMaxLength: remote.giftMessageMaxLength || DEFAULT_CHECKOUT_OPTIONS.giftMessageMaxLength,
+    pickup: {
+      mode: remote.pickupMode === 'FIXED' && remote.fixedPickupPostId ? 'FIXED' : 'CUSTOMER_CHOICE',
+      fixedPostId: remote.pickupMode === 'FIXED' ? remote.fixedPickupPostId ?? null : null,
+    },
+    bankTransfer: bank?.iban ? { iban: bank.iban, holder: bank.holder ?? '', bank: bank.bank ?? '' } : null,
   };
 }
 

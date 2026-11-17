@@ -25,7 +25,7 @@ export function Footer() {
           <ul>
             {isActive('natal') && (
               <li>
-                <Link to="/catalogo?campanha=natal">Cabazes de Natal</Link>
+                <Link to="/catalogo?campanha=natal">Cestas de Natal</Link>
               </li>
             )}
             {isActive('escoamento') && (

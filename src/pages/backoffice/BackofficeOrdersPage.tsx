@@ -22,6 +22,21 @@ const STATUS_FILTER_OPTIONS = [
   ORDER_STATUS.CANCELLED,
 ].map((status) => ({ value: status, label: status }));
 
+/** Filtro de pagamento: `proof` = IBAN por confirmar com comprovativo enviado (a lista que a equipa tem de ver). */
+function matchesPayment(order: ApiOrder, filter: string): boolean {
+  const payment = order.payment;
+  switch (filter) {
+    case 'proof':
+      return payment?.method === 'IBAN' && payment.status === 'PENDING' && Boolean(payment.proofUploadedAt);
+    case 'pending':
+      return payment?.status === 'PENDING';
+    case 'paid':
+      return payment?.status === 'PAID';
+    default:
+      return true;
+  }
+}
+
 export function BackofficeOrdersPage() {
   const { data: orders = [], isLoading, isError, refetch } = useOrders();
   const { mutate: updateStatus, isPending, variables } = useUpdateOrderStatus();
@@ -31,6 +46,7 @@ export function BackofficeOrdersPage() {
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<ApiOrder | null>(null);
 
@@ -45,15 +61,18 @@ export function BackofficeOrdersPage() {
       const matchesSearch =
         !query ||
         order.id.toLowerCase().includes(query) ||
+        (order.compraRef ?? '').toLowerCase().includes(query) ||
         order.customer.fullName.toLowerCase().includes(query) ||
         order.customer.email.toLowerCase().includes(query) ||
         order.customer.phone.includes(query);
       const matchesStore = !storeFilter || order.pickupPost === storeFilter;
       const status = order.status === ORDER_STATUS.ACTIVE ? ORDER_STATUS.PENDING : order.status;
       const matchesStatus = !statusFilter || status === statusFilter;
-      return matchesSearch && matchesStore && matchesStatus;
+      return matchesSearch && matchesStore && matchesStatus && matchesPayment(order, paymentFilter);
     });
-  }, [orders, search, storeFilter, statusFilter]);
+  }, [orders, search, storeFilter, statusFilter, paymentFilter]);
+
+  const proofsToCheck = orders.filter((order) => matchesPayment(order, 'proof')).length;
 
   const count = (status: string) => orders.filter((order) => order.status === status).length;
   const volume = orders
@@ -142,7 +161,7 @@ export function BackofficeOrdersPage() {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Pesquisar por n.º, cliente, e-mail ou telefone…"
+                  placeholder="Pesquisar por n.º, referência, cliente, e-mail ou telefone…"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -156,6 +175,16 @@ export function BackofficeOrdersPage() {
                   options={stores.map((store) => ({ value: store, label: store }))}
                 />
                 <Select value={statusFilter} onChange={setStatusFilter} placeholder="Todos os estados" options={STATUS_FILTER_OPTIONS} />
+                <Select
+                  value={paymentFilter}
+                  onChange={setPaymentFilter}
+                  placeholder="Todos os pagamentos"
+                  options={[
+                    { value: 'proof', label: `Comprovativos por verificar (${proofsToCheck})` },
+                    { value: 'pending', label: 'Por pagar' },
+                    { value: 'paid', label: 'Pagos' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -184,6 +213,11 @@ export function BackofficeOrdersPage() {
                         <tr key={order.id}>
                           <td className="mono" title={order.id}>
                             {shortOrderId(order.id)}
+                            {order.compraRef && (
+                              <div className="backoffice-book-meta" title="Referência da compra">
+                                Ref. {order.compraRef}
+                              </div>
+                            )}
                           </td>
                           <td>{order.customer.fullName}</td>
                           <td>
@@ -200,6 +234,9 @@ export function BackofficeOrdersPage() {
                             {order.payment && (
                               <div className="backoffice-book-meta">
                                 {PAYMENT_METHOD_LABELS[order.payment.method]} · {PAYMENT_STATUS_LABELS[order.payment.status]}
+                                {matchesPayment(order, 'proof') && (
+                                  <strong className="backoffice-proof-flag"> · comprovativo por verificar</strong>
+                                )}
                               </div>
                             )}
                           </td>
@@ -241,7 +278,12 @@ export function BackofficeOrdersPage() {
         )}
       </div>
 
-      <OrderItemsModal isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} order={selectedOrder} />
+      <OrderItemsModal
+        isOpen={selectedOrder !== null}
+        onClose={() => setSelectedOrder(null)}
+        order={selectedOrder}
+        onOrderUpdated={setSelectedOrder}
+      />
 
       <ConfirmModal
         isOpen={orderToCancel !== null}

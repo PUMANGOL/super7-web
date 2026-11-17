@@ -135,23 +135,38 @@
   color: var(--brand-primary);
 }
 
-.backoffice-user-dropdown-logout {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* Terminar sessão: sempre à vista no fundo do menu lateral. Usa .backoffice-sidebar-link
+   (encolhe para só o ícone com o menu) e o vermelho que a acção já tinha no dropdown.
+   Os seletores duplos ganham ao .backoffice-sidebar-link, que é carregado depois. */
+.backoffice-sidebar-link.backoffice-sidebar-logout {
   width: 100%;
-  padding: 0.625rem 0.75rem;
+  margin-top: 0.25rem;
   border: none;
-  border-radius: var(--radius-sm);
   background: transparent;
+  font-family: inherit;
   color: #dc2626;
-  font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
 }
 
-.backoffice-user-dropdown-logout:hover {
+.backoffice-sidebar-link.backoffice-sidebar-logout:hover {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.backoffice-sidebar-link.backoffice-sidebar-logout:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+/* Telemóvel: o menu lateral fica no topo; o botão segue ao lado do utilizador. */
+@media (max-width: 768px) {
+  .backoffice-sidebar-footer .backoffice-user-menu {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .backoffice-sidebar-link.backoffice-sidebar-logout {
+    width: auto;
+    margin-top: 0;
+  }
 }

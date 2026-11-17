@@ -32,11 +32,11 @@ export function CabazCard({ product }: { product: Product }) {
         ) : (
           product.badge && <span className="s7-etiqueta s7-etiqueta--natal s7-cabaz__selo">{product.badge}</span>
         )}
-        <ProductImage product={product} size={600} alt={`${product.name} embalado para oferta`} />
+        <ProductImage product={product} size={600} alt={`${product.name} em embalagem de oferta`} />
       </div>
       <div className="s7-cabaz__corpo">
         <p className={product.level ? `s7-nivel s7-nivel--${product.level}` : 's7-nivel'}>
-          {product.level ?? 'Cabaz de Natal'}
+          {product.level ?? 'Cesta de Natal'}
         </p>
         <h3 className="s7-cabaz__nome">
           <Link to={productPath(product)}>{product.name}</Link>

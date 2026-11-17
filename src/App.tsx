@@ -41,6 +41,12 @@ const BackofficeCategoriesPage = lazy(() =>
 const BackofficePickupPostsPage = lazy(() =>
   import('./pages/backoffice/BackofficePickupPostsPage').then((module) => ({ default: module.BackofficePickupPostsPage })),
 );
+const BackofficeDashboardPage = lazy(() =>
+  import('./pages/backoffice/BackofficeDashboardPage').then((module) => ({ default: module.BackofficeDashboardPage })),
+);
+const BackofficeSettingsPage = lazy(() =>
+  import('./pages/backoffice/BackofficeSettingsPage').then((module) => ({ default: module.BackofficeSettingsPage })),
+);
 
 function BackofficeLoading() {
   return (
@@ -72,7 +78,15 @@ function App() {
                   </BackofficeRoute>
                 }
               >
-                <Route index element={<Navigate to="encomendas" replace />} />
+                <Route index element={<Navigate to="painel" replace />} />
+                <Route
+                  path="painel"
+                  element={
+                    <RequirePermission permission="viewDashboard">
+                      <BackofficeDashboardPage />
+                    </RequirePermission>
+                  }
+                />
                 <Route path="encomendas" element={<BackofficeOrdersPage />} />
                 <Route
                   path="produtos"
@@ -127,6 +141,14 @@ function App() {
                   element={
                     <RequirePermission permission="manageCatalog">
                       <BackofficePickupPostsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="definicoes"
+                  element={
+                    <RequirePermission permission="viewSettings">
+                      <BackofficeSettingsPage />
                     </RequirePermission>
                   }
                 />

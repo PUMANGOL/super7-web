@@ -64,7 +64,8 @@ const fieldId = (name: FieldName) => `s7-${name}`;
 const DEFAULT_PAYMENT: PaymentMethod = 'MULTICAIXA_EXPRESS';
 
 const PAYMENT_OPTIONS: Record<PaymentMethod, { icon: IconName; note: string }> = {
-  MULTICAIXA_EXPRESS: { icon: 'telemovel', note: 'Confirma o pagamento na aplicação' },
+  MULTICAIXA_EXPRESS: { icon: 'telemovel', note: 'Confirma o pagamento na aplicação, em 2 minutos' },
+  IBAN: { icon: 'recibo', note: 'Transfere e envia o comprovativo (PDF ou imagem)' },
   REFERENCE: { icon: 'cartao', note: 'Num Multicaixa ou no homebanking' },
   IN_STORE: { icon: 'dinheiro', note: 'No acto do levantamento' },
 };
@@ -77,7 +78,10 @@ interface DateLimits {
 interface Context {
   dates: DateLimits;
   delivery: DeliveryType;
-  paymentMethod: PaymentMethod;
+  /** null quando a loja não tem nenhum pagamento disponível. */
+  paymentMethod: PaymentMethod | null;
+  /** Loja fixa (definições da loja): o cliente não escolhe. */
+  fixedPostId: string | null;
 }
 
 function validate(form: CheckoutForm, context: Context): FieldErrors {
@@ -89,7 +93,7 @@ function validate(form: CheckoutForm, context: Context): FieldErrors {
   if (!form.email.trim()) errors.email = 'Indique o e-mail para receber a confirmação.';
   else if (!isValidEmail(form.email)) errors.email = 'Verifique o endereço de e-mail.';
 
-  if (!form.pickupPostId) {
+  if (!context.fixedPostId && !form.pickupPostId) {
     errors.pickupPostId = delivery === 'PICKUP' ? 'Escolha a loja onde quer levantar.' : 'Escolha a loja mais próxima da morada.';
   }
   if (delivery === 'PICKUP') {
@@ -205,22 +209,28 @@ export function CheckoutPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
 
-  /* Opções efectivas: a entrega ao domicílio precisa de um pagamento online; "pagar na loja" só existe com levantamento. */
+  /*
+   * Opções efectivas (definições da loja): Multicaixa Express e/ou IBAN, ambos pagos antes; a entrega ao domicílio
+   * precisa de um deles. Com loja fixa, o cliente não escolhe a loja.
+   */
   const onlineMethods = options.paymentMethods.filter((method) => method !== 'IN_STORE');
   const homeDeliveryAvailable = options.homeDelivery.enabled && onlineMethods.length > 0;
+  const fixedPostId = options.pickup.mode === 'FIXED' ? options.pickup.fixedPostId : null;
   const contextFor = (values: CheckoutForm): Context => {
     const chosenDelivery: DeliveryType = values.delivery === 'HOME_DELIVERY' && homeDeliveryAvailable ? 'HOME_DELIVERY' : 'PICKUP';
     const allowed = chosenDelivery === 'HOME_DELIVERY' ? onlineMethods : options.paymentMethods;
-    const method: PaymentMethod = allowed.includes(values.paymentMethod) ? values.paymentMethod : allowed[0] ?? 'IN_STORE';
-    return { dates, delivery: chosenDelivery, paymentMethod: method };
+    const method = allowed.includes(values.paymentMethod) ? values.paymentMethod : allowed[0] ?? null;
+    return { dates, delivery: chosenDelivery, paymentMethod: method, fixedPostId };
   };
   const context = contextFor(form);
   const { delivery, paymentMethod } = context;
   const methods = delivery === 'HOME_DELIVERY' ? onlineMethods : options.paymentMethods;
   const deliveryFee = delivery === 'HOME_DELIVERY' ? options.homeDelivery.fee : 0;
   const total = detail.subtotal + deliveryFee;
+  const giftAvailable = options.giftEnabled;
+  const pickupPostId = fixedPostId ?? form.pickupPostId;
 
-  const selectedPost = pickupPosts.data?.find((post) => post.id === form.pickupPostId) ?? null;
+  const selectedPost = pickupPosts.data?.find((post) => post.id === pickupPostId) ?? null;
   const postInfo = pickupPostDetails(selectedPost);
 
   const set = <K extends keyof CheckoutForm>(key: K, value: CheckoutForm[K]) => {
@@ -266,9 +276,13 @@ export function CheckoutPage() {
       document.getElementById(fieldId(firstInvalid))?.focus();
       return;
     }
+    if (!paymentMethod) {
+      setSubmitErrors(['Os pagamentos estão indisponíveis de momento. Tente novamente mais tarde.']);
+      return;
+    }
 
     const home = delivery === 'HOME_DELIVERY';
-    const gift = form.gift ? { recipient: form.recipient.trim(), message: form.giftMessage.trim() } : null;
+    const gift = giftAvailable && form.gift ? { recipient: form.recipient.trim(), message: form.giftMessage.trim() } : null;
     const deliveryAddress = home
       ? { address: form.address.trim(), district: form.district.trim(), reference: form.addressReference.trim() || null }
       : null;
@@ -297,7 +311,7 @@ export function CheckoutPage() {
         location: home ? form.district.trim() : selectedPost?.zone || selectedPost?.name || 'Levantamento na loja',
         nif: nif || undefined,
       },
-      pickupPostId: form.pickupPostId,
+      pickupPostId,
       notes: notes || undefined,
       items: detail.lines.map((line) => ({ productId: line.product.id, quantity: line.qty })),
       // Campos propostos: a API actual ignora-os; ver docs/api-campos-em-falta.md.
@@ -344,7 +358,20 @@ export function CheckoutPage() {
   const empty = lines.length === 0 || (!isLoading && !isError && detail.lines.length === 0);
   const posts = pickupPosts.data ?? [];
 
-  const postSelect = (label: string, help?: string) => (
+  const postSelect = (label: string, help?: string) =>
+    fixedPostId ? (
+      // Loja fixa (definições da loja): só informação.
+      <div className="s7-campo">
+        <span className="s7-campo__rotulo">{label}</span>
+        <p className="s7-passo__info">
+          <Icon name="loja" />
+          <span>
+            <strong>{selectedPost ? (selectedPost.zone ? `${selectedPost.name} · ${selectedPost.zone}` : selectedPost.name) : 'Loja Super7'}</strong>
+            {postInfo && <> · {postInfo}</>}
+          </span>
+        </p>
+      </div>
+    ) : (
     <Field
       name="pickupPostId"
       label={label}
@@ -405,7 +432,7 @@ export function CheckoutPage() {
           title="Não há nada para finalizar"
           action={
             <Link className="s7-btn s7-btn--campanha" to={isActive('natal') ? '/catalogo?campanha=natal' : '/catalogo'}>
-              {isActive('natal') ? 'Ver cabazes de Natal' : 'Ver produtos'}
+              {isActive('natal') ? 'Ver cestas de Natal' : 'Ver produtos'}
             </Link>
           }
         >
@@ -583,7 +610,8 @@ export function CheckoutPage() {
               </div>
             </fieldset>
 
-            {/* 3 · Oferta */}
+            {/* 3 · Oferta (se as definições da loja a permitirem) */}
+            {giftAvailable && (
             <fieldset className="s7-passo">
               <legend>
                 <b>3</b> Oferta
@@ -631,12 +659,19 @@ export function CheckoutPage() {
                 </div>
               )}
             </fieldset>
+            )}
 
-            {/* 4 · Pagamento (sem dados de cartão: o pagamento é feito na rede Multicaixa ou na loja) */}
+            {/* Pagamento: Multicaixa Express ou transferência bancária (sem dados de cartão) */}
             <fieldset className="s7-passo">
               <legend>
-                <b>4</b> Pagamento
+                <b>{giftAvailable ? 4 : 3}</b> Pagamento
               </legend>
+              {methods.length === 0 && (
+                <p className="s7-passo__info" role="alert">
+                  <Icon name="alerta" />
+                  <span>Os pagamentos estão indisponíveis de momento. Tente novamente mais tarde.</span>
+                </p>
+              )}
               <div className="s7-opcoes">
                 {methods.map((method) => (
                   <OptionCard
@@ -673,10 +708,22 @@ export function CheckoutPage() {
                   </div>
                 </div>
               )}
-              {paymentMethod === 'REFERENCE' && (
+              {paymentMethod === 'MULTICAIXA_EXPRESS' && (
                 <p className="s7-passo__info s7-passo__info--depois">
-                  <Icon name="cartao" />
-                  <span>A entidade e a referência aparecem na confirmação da encomenda e no e-mail.</span>
+                  <Icon name="relogio" />
+                  <span>
+                    Depois de confirmar a encomenda, tem <strong>2 minutos</strong> para aceitar o pagamento na
+                    aplicação Multicaixa Express.
+                  </span>
+                </p>
+              )}
+              {paymentMethod === 'IBAN' && (
+                <p className="s7-passo__info s7-passo__info--depois">
+                  <Icon name="recibo" />
+                  <span>
+                    Depois de confirmar a encomenda, mostramos o IBAN para a transferência e pode enviar o
+                    comprovativo (PDF ou imagem). A loja confirma o pagamento depois de o verificar.
+                  </span>
                 </p>
               )}
             </fieldset>
@@ -720,7 +767,11 @@ export function CheckoutPage() {
               <span>Total</span>
               <strong>{formatKz(total)}</strong>
             </p>
-            <button className="s7-btn s7-btn--primario s7-btn--grande s7-btn--bloco" type="submit" disabled={mutation.isPending}>
+            <button
+              className="s7-btn s7-btn--primario s7-btn--grande s7-btn--bloco"
+              type="submit"
+              disabled={mutation.isPending || !paymentMethod}
+            >
               {mutation.isPending ? 'A registar a encomenda…' : 'Confirmar encomenda'}
             </button>
             {submitErrors.length > 0 && (
@@ -732,7 +783,7 @@ export function CheckoutPage() {
             )}
             <p className="s7-resumo__nota">
               <Icon name="escudo" />
-              <span>Não pedimos dados de cartão. O pagamento é feito por Multicaixa ou na loja.</span>
+              <span>Não pedimos dados de cartão. O pagamento é feito por Multicaixa Express ou por transferência bancária.</span>
             </p>
           </aside>
         </form>

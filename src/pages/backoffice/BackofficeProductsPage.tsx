@@ -18,7 +18,7 @@ const PAGE_SIZE = 20;
 
 const SEGMENTS = [
   { value: 'natal', label: 'Campanha de Natal' },
-  { value: 'cabazes', label: 'Só cabazes' },
+  { value: 'cabazes', label: 'Só cestas' },
   { value: 'escoamento', label: 'Escoamento' },
   { value: 'destaque', label: 'Destaques' },
   { value: 'esgotado', label: 'Esgotados' },
@@ -101,7 +101,7 @@ export function BackofficeProductsPage() {
           <div className="backoffice-header-row">
             <div>
               <h1 className="section-title">Produtos</h1>
-              <p className="section-subtitle">Catálogo da loja: cabazes, escoamento e produtos do dia-a-dia.</p>
+              <p className="section-subtitle">Catálogo da loja: cestas, escoamento e produtos do dia-a-dia.</p>
             </div>
             <Link to="/backoffice/produtos/novo" className="btn btn-primary">
               <Plus size={18} />
@@ -132,7 +132,7 @@ export function BackofficeProductsPage() {
               </div>
               <div className="stat-card">
                 <span className="stat-value">{count((product) => product.isCabaz)}</span>
-                <span className="stat-label">Cabazes</span>
+                <span className="stat-label">Cestas</span>
               </div>
               <div className="stat-card">
                 <span className="stat-value">{count((product) => inCampaign(product, 'escoamento'))}</span>
@@ -217,8 +217,8 @@ export function BackofficeProductsPage() {
                             </td>
                             <td>
                               <div className="backoffice-tags">
-                                {product.level && <span className="badge badge-yellow">Cabaz {product.level}</span>}
-                                {!product.level && product.isCabaz && <span className="badge badge-yellow">Cabaz</span>}
+                                {product.level && <span className="badge badge-yellow">Cesta {product.level}</span>}
+                                {!product.level && product.isCabaz && <span className="badge badge-yellow">Cesta</span>}
                                 {inCampaign(product, 'natal') && !product.isCabaz && <span className="badge badge-pink">Natal</span>}
                                 {inCampaign(product, 'escoamento') && (
                                   <span className="badge badge-orange">Escoamento{discount > 0 ? ` −${discount}%` : ''}</span>
@@ -259,7 +259,7 @@ export function BackofficeProductsPage() {
               <div className="backoffice-empty">
                 <p>
                   {products.length === 0
-                    ? 'Ainda não há produtos à venda. Comece por criar os cabazes de Natal.'
+                    ? 'Ainda não há produtos à venda. Comece por criar as cestas de Natal.'
                     : 'Nenhum produto corresponde aos filtros.'}
                 </p>
               </div>

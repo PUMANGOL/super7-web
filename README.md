@@ -1,7 +1,7 @@
 # Super7 Digital
 
 Loja online das lojas de conveniência Super7 dos postos Pumangol, com back-office para a equipa.
-Nesta primeira fase a página inicial está centrada na **campanha de Natal** (cabazes Ouro, Prata e Bronze
+Nesta primeira fase a página inicial está centrada na **campanha de Natal** (cestas Ouro, Prata e Bronze
 para clientes e colaboradores) e na **campanha de escoamento**.
 
 React 19 · TypeScript · Vite · React Router · TanStack Query · Axios. Liga-se à Pumangol Marketplace API
@@ -63,7 +63,7 @@ src/
     ├── css/super7.css       # Folha de estilos do layout (não editar à mão: vem do design)
     ├── css/super7-app.css   # Complementos da aplicação (carregamento, estados, ajustes)
     ├── css/super7-ajustes.css # Responsividade (320 px a ecrãs largos) e movimento; carregado por último
-    ├── fonts/, img/         # Montserrat e Figtree alojadas no projecto; cabazes e fotografias das lojas
+    ├── fonts/, img/         # Montserrat e Figtree alojadas no projecto; cestas e fotografias das lojas
 ```
 
 O back-office é carregado à parte (`React.lazy`): quem visita a loja não descarrega esse código.
@@ -74,7 +74,7 @@ O back-office é carregado à parte (`React.lazy`): quem visita a loja não desc
 | --- | --- |
 | `/` | Página inicial (campanha de Natal e escoamento) |
 | `/catalogo?campanha=&categoria=&q=&precoMax=&emStock=1&ordenar=&pagina=` | Catálogo com filtros na URL |
-| `/produto/:id` | Detalhe do produto ou cabaz |
+| `/produto/:id` | Detalhe do produto ou cesta |
 | `/carrinho`, `/checkout` | Carrinho e finalizar compra |
 | `/encomenda/:id` | Confirmação e estado (é o link dos e-mails da API) |
 | `/encomenda` | Consultar encomenda |
@@ -116,15 +116,16 @@ lê primeiro esses campos e só depois os atributos). A tabela serve para quem o
 | `preco_anterior` | `3200` | Preço riscado e etiqueta −30%; só conta se for maior que o preço |
 | `stock_inicial` | `60` | Base da barra "Restam N unidades" no escoamento |
 | `formato` | `500 g`, `6 × 1,5 L` | Linha por baixo do nome |
-| `resumo` | frase até 255 caracteres | Cartão do cabaz e topo da página do produto |
-| `nivel` | `ouro`, `prata`, `bronze` | Marca o produto como cabaz, com a cor do nível |
-| `selo` | `O mais completo` | Etiqueta no cartão do cabaz |
-| `item` (um por artigo) | `2 × Arroz branco 1 kg` | Lista "O que inclui" e comparação dos cabazes |
+| `resumo` | frase até 255 caracteres | Cartão da cesta e topo da página do produto |
+| `nivel` | `ouro`, `prata`, `bronze` | Marca o produto como cesta, com a cor do nível |
+| `selo` | `A mais completa` | Etiqueta no cartão da cesta |
+| `item` (um por artigo) | `2 × Arroz branco 1 kg` | Lista "O que inclui" e comparação das cestas |
 | `destaque` | `sim` | Secção "Destaques da loja" na página inicial |
 
 A leitura aceita variantes (`Preço anterior`, `precoAnterior`, `Nível`, `itens` separados por `;`).
-Os produtos da categoria com slug `cabazes` são cabazes e entram sempre na campanha de Natal.
-As imagens dos cabazes devem ter fundo transparente, como as de `src/assets/img/`.
+Os produtos das categorias com slug `cestas` ou `cabazes` (e variantes, ver `CABAZ_CATEGORY_SLUGS` em
+`src/config/store.ts`) são cestas e entram sempre na campanha de Natal.
+As imagens das cestas devem ter fundo transparente, como as de `src/assets/img/`.
 
 ## Checkout e encomendas
 

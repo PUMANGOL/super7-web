@@ -37,6 +37,8 @@ export interface Product {
   previousPrice: number | null;
   /** `null` quando o stock não é controlado (livros). */
   stock: number | null;
+  /** A categoria pede para mostrar a quantidade em stock ("12 em stock"). */
+  showStock: boolean;
   initialStock: number | null;
   campaigns: CampaignId[];
   image: string | null;

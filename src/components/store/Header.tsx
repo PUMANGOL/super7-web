@@ -32,7 +32,7 @@ function CampaignBand() {
           {natal ? (
             <span>
               <strong>{CAMPAIGNS.natal.name}</strong> ·{' '}
-              <Link to="/catalogo?campanha=natal">Cabazes de Natal prontos a oferecer</Link>
+              <Link to="/catalogo?campanha=natal">Cestas de Natal prontas a oferecer</Link>
             </span>
           ) : escoamento ? (
             <span>
@@ -73,7 +73,7 @@ function SearchForm({ initial }: { initial: string }) {
         id="s7-q"
         name="q"
         type="search"
-        placeholder="Pesquisar cabazes, bebidas, snacks…"
+        placeholder="Pesquisar cestas, bebidas, snacks…"
         autoComplete="off"
         value={value}
         onChange={(event) => setValue(event.target.value)}
@@ -143,7 +143,7 @@ export function Header() {
   const natalActive = isActive('natal') && (!catalog || catalog.products.some((product) => inCampaign(product, 'natal')));
   const escoamentoActive =
     isActive('escoamento') && (!catalog || catalog.products.some((product) => inCampaign(product, 'escoamento')));
-  // O link "Cabazes de Natal" já cobre a categoria dos cabazes.
+  // O link "Cestas de Natal" já cobre a categoria das cestas.
   const categories = (catalog?.categories ?? []).filter((category) => !(natalActive && category.isCabazes));
 
   return (

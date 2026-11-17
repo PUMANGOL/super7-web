@@ -2,12 +2,14 @@ import type { PaymentMethod } from '../config/store';
 
 const LONG: Record<PaymentMethod, string> = {
   MULTICAIXA_EXPRESS: 'Multicaixa Express',
+  IBAN: 'transferência bancária (IBAN)',
   REFERENCE: 'pagamento por referência',
   IN_STORE: 'na loja, no acto do levantamento',
 };
 
 const SHORT: Record<PaymentMethod, string> = {
   MULTICAIXA_EXPRESS: 'Express',
+  IBAN: 'transferência',
   REFERENCE: 'referência',
   IN_STORE: 'na loja',
 };

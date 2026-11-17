@@ -173,7 +173,7 @@ export function CartPage() {
           action={
             natalActive ? (
               <Link className="s7-btn s7-btn--campanha" to="/catalogo?campanha=natal">
-                Ver cabazes de Natal
+                Ver cestas de Natal
               </Link>
             ) : (
               <Link className="s7-btn s7-btn--primario" to="/catalogo">
@@ -183,7 +183,7 @@ export function CartPage() {
           }
         >
           {natalActive
-            ? 'Comece pelos cabazes de Natal ou aproveite os preços de escoamento.'
+            ? 'Comece pelas cestas de Natal ou aproveite os preços de escoamento.'
             : 'Explore o catálogo e junte os produtos que quer levantar na loja.'}
         </EmptyState>
       )}

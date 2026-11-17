@@ -21,7 +21,7 @@ function categoryIcon(category: Category | undefined): IconName {
   if (category.icon && CATEGORY_ICON_NAMES.has(category.icon)) return category.icon as IconName;
 
   const text = `${normalise(category.slug)} ${normalise(category.name)}`;
-  if (/cabaz|natal|oferta|presente/.test(text)) return 'gift';
+  if (/cabaz|cesta|natal|oferta|presente/.test(text)) return 'gift';
   if (/mercearia|alimenta|despensa/.test(text)) return 'basket';
   if (/bebida|agua|sumo/.test(text)) return 'bottle';
   if (/snack|doce|bolacha|chocolate/.test(text)) return 'cookie';
@@ -77,6 +77,7 @@ export function mapProduct(api: ApiProduct, context: MapContext): Product {
     price,
     previousPrice,
     stock: isBook ? null : Math.max(0, Math.floor(Number(api.stock) || 0)),
+    showStock: !isBook && Boolean(api.showStock ?? category?.showStock),
     initialStock: attributes.initialStock,
     campaigns,
     image: api.coverImage?.trim() || null,

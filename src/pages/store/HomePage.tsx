@@ -65,15 +65,15 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
             {title}
           </p>
           <h1 id="s7-hero-titulo">
-            Este Natal, ofereça um <em>cabaz Super7</em>
+            Este Natal, ofereça uma <em>cesta Super7</em>
           </h1>
           <p className="s7-hero__intro">
-            Cabazes prontos a oferecer a clientes, colaboradores e família. Encomende online e levante na loja
+            Cestas prontas a oferecer a clientes, colaboradores e família. Encomende online e levante na loja
             Super7 do posto Pumangol mais próximo.
           </p>
           <div className="s7-hero__accoes">
             <a className="s7-btn s7-btn--campanha s7-btn--grande" href="#cabazes">
-              Escolher cabaz
+              Escolher cesta
               <Icon name="seta" />
             </a>
             {showClearance && (
@@ -206,16 +206,16 @@ export function HomePage() {
             <div className="s7-seccao__topo">
               <div>
                 <p className="s7-sobretitulo s7-sobretitulo--natal">
-                  <Icon name="gift" /> Cabazes de Natal
+                  <Icon name="gift" /> Cestas de Natal
                 </p>
                 <h2 id="s7-cabazes-titulo">
-                  {cabazes.length === 3 ? 'Três cabazes, prontos a oferecer' : 'Cabazes prontos a oferecer'}
+                  {cabazes.length === 3 ? 'Três cestas, prontas a oferecer' : 'Cestas prontas a oferecer'}
                 </h2>
-                <p>Embalados em celofane, com laço e cartão Boas Festas. Escolha o cabaz e a quantidade.</p>
+                <p>Embaladas em celofane, com laço e cartão Boas Festas. Escolha a cesta e a quantidade.</p>
               </div>
               {cabazes.length > 0 && (
                 <Link className="s7-ligacao" to="/catalogo?campanha=natal">
-                  Ver todos os cabazes <Icon name="seta" />
+                  Ver todas as cestas <Icon name="seta" />
                 </Link>
               )}
             </div>
@@ -232,8 +232,8 @@ export function HomePage() {
                 ))}
               </div>
             ) : (
-              <EmptyState icon="gift" title="Os cabazes de Natal estão quase a chegar">
-                Estamos a preparar os cabazes desta campanha. Volte dentro de alguns dias.
+              <EmptyState icon="gift" title="As cestas de Natal estão quase a chegar">
+                Estamos a preparar as cestas desta campanha. Volte dentro de alguns dias.
               </EmptyState>
             )}
           </div>
@@ -329,7 +329,7 @@ export function HomePage() {
           <ol className="s7-passos">
             <li>
               <h3>Escolha os produtos</h3>
-              <p>Cabazes de Natal, escoamento e os produtos do dia-a-dia, na quantidade que precisar.</p>
+              <p>Cestas de Natal, escoamento e os produtos do dia-a-dia, na quantidade que precisar.</p>
             </li>
             <li>
               <h3>Pague como preferir</h3>

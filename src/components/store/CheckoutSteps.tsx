@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 
-const STEPS = ['Carrinho', 'Dados e pagamento', 'Confirmação'];
+/**
+ * Carrinho → Dados e pagamento → Aguarda pagamento → Pagamento confirmado.
+ * "Aguarda pagamento": Multicaixa Express (2 minutos para aceitar no telemóvel) ou IBAN (transferência e
+ * comprovativo). "Pagamento confirmado": pela API no Express, pela equipa da loja no IBAN.
+ */
+const STEPS = ['Carrinho', 'Dados e pagamento', 'Aguarda pagamento', 'Pagamento confirmado'];
 
-/** Carrinho → Dados e pagamento → Confirmação. */
-export function CheckoutSteps({ current }: { current: 1 | 2 | 3 }) {
+export function CheckoutSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
   return (
     <ol className="s7-etapas" aria-label="Passos da compra">
       {STEPS.map((label, index) => {

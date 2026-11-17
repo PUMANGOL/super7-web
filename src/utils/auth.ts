@@ -8,8 +8,15 @@ export const TEAM_ROLES: RoleName[] = ['ADMIN', 'MANAGER', 'SUPPORT', 'FINANCE',
 /** O que cada acção do back-office exige (tabela "Perfis e permissões" da documentação da API). */
 export const PERMISSIONS = {
   viewOrders: TEAM_ROLES,
+  viewDashboard: TEAM_ROLES,
   changeOrderStatus: ['ADMIN', 'MANAGER', 'SUPPORT'],
+  /** Confirmar ou recusar pagamentos (PUT /order/{id}/payment-status). */
+  confirmPayments: ['ADMIN', 'MANAGER', 'FINANCE'],
   manageCatalog: ['ADMIN', 'MANAGER'],
+  /** Ver as definições da loja (GET /settings). */
+  viewSettings: ['ADMIN', 'MANAGER'],
+  /** Alterar as definições da loja (PUT /settings). */
+  manageSettings: ['ADMIN'],
 } satisfies Record<string, RoleName[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

@@ -7,6 +7,7 @@ import type { ApiOrder } from '../../types/api';
 import { formatDate as formatDay } from '../../utils/format';
 import { formatDate, formatPrice } from '../../utils/helpers';
 import { Modal } from '../ui/Modal';
+import { OrderPaymentProof } from './OrderPaymentProof';
 import { Thumbnail } from './Thumbnail';
 import './OrderItemsModal.css';
 
@@ -14,9 +15,11 @@ interface OrderItemsModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: ApiOrder | null;
+  /** A encomenda mudou aqui dentro (pagamento confirmado ou recusado). */
+  onOrderUpdated?: (order: ApiOrder) => void;
 }
 
-export function OrderItemsModal({ isOpen, onClose, order }: OrderItemsModalProps) {
+export function OrderItemsModal({ isOpen, onClose, order, onOrderUpdated }: OrderItemsModalProps) {
   if (!order) return null;
 
   // Entrega, pagamento e oferta só vêm da API depois de o backend os implementar; até lá estão nas observações.
@@ -79,6 +82,9 @@ export function OrderItemsModal({ isOpen, onClose, order }: OrderItemsModalProps
                   </span>
                 )}
                 {view.payment.phone && <span className="order-items-modal-subvalue">Multicaixa Express {view.payment.phone}</span>}
+                {view.payment.status === 'PAID' && order.payment?.paidAt && (
+                  <span className="order-items-modal-subvalue">Confirmado {formatDate(order.payment.paidAt)}</span>
+                )}
               </div>
             </div>
           )}
@@ -94,11 +100,20 @@ export function OrderItemsModal({ isOpen, onClose, order }: OrderItemsModalProps
           )}
         </div>
 
+        <OrderPaymentProof
+          key={`${order.id}-${order.payment?.proofUploadedAt ?? ''}`}
+          order={order}
+          onUpdated={(updated) => onOrderUpdated?.(updated)}
+        />
+
         <div className="order-items-modal-status-row">
           <span className={`badge ${orderStatusColors[order.status] ?? 'badge-gray'}`}>{order.status}</span>
           <span className="order-items-modal-date">{formatDate(order.createAt)}</span>
         </div>
-        <p className="order-items-modal-id mono">N.º {order.id}</p>
+        <p className="order-items-modal-id mono">
+          N.º {order.id}
+          {order.compraRef && ` · Referência da compra ${order.compraRef}`}
+        </p>
 
         {order.notes?.trim() && (
           <div className="order-items-modal-notes">

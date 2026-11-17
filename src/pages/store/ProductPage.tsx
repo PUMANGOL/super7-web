@@ -34,6 +34,16 @@ function Availability({ product }: { product: Product }) {
   // No escoamento, a barra de stock substitui esta indicação.
   if (inCampaign(product, 'escoamento') && product.stock !== null) return null;
 
+  // A categoria pede a quantidade exacta.
+  if (product.showStock && product.stock !== null) {
+    return (
+      <p className={product.stock <= 5 ? 's7-disponivel s7-disponivel--pouco' : 's7-disponivel'}>
+        <Icon name={product.stock <= 5 ? 'relogio' : 'check'} />
+        <span>{product.stock} em stock</span>
+      </p>
+    );
+  }
+
   if (product.stock !== null && product.stock <= 5) {
     return (
       <p className="s7-disponivel s7-disponivel--pouco">
@@ -57,7 +67,7 @@ function CompareCabazes({ current, cabazes }: { current: Product; cabazes: Produ
   return (
     <section className="s7-seccao s7-seccao--junta" aria-labelledby="s7-comparar-titulo">
       <div className="s7-bloco">
-        <h2 id="s7-comparar-titulo">Compare os cabazes</h2>
+        <h2 id="s7-comparar-titulo">Compare as cestas</h2>
         <div className="s7-comparar-rolo">
           <table className="s7-comparar">
             <thead>
@@ -196,7 +206,7 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
         <div className="s7-detalhe__info">
           {product.isCabaz ? (
             <p className={product.level ? `s7-nivel s7-nivel--${product.level}` : 's7-nivel'}>
-              Cabaz de Natal{product.level ? ` · ${product.level}` : ''}
+              Cesta de Natal{product.level ? ` · ${product.level}` : ''}
             </p>
           ) : (
             <p className="s7-produto__cat">{[product.categoryName, product.format].filter(Boolean).join(' · ')}</p>

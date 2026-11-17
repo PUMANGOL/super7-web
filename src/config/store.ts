@@ -32,9 +32,9 @@ export const CAMPAIGNS: Record<CampaignId, Campaign> = {
   natal: {
     id: 'natal',
     name: 'Campanha Boas Festas',
-    label: 'Cabazes de Natal',
-    tagline: 'Cabazes prontos a oferecer, com laço e cartão.',
-    description: 'Cabazes para oferecer a clientes, colaboradores e família.',
+    label: 'Cestas de Natal',
+    tagline: 'Cestas prontas a oferecer, com laço e cartão.',
+    description: 'Cestas para oferecer a clientes, colaboradores e família.',
     startsOn: '2026-11-01',
     endsOn: '2026-12-31',
     ordersUntil: '2026-12-23T18:00:00+01:00',
@@ -69,7 +69,14 @@ export function isCampaignActive(campaign: Campaign, now: Date = new Date()): bo
  * Categorias cujos produtos são cabazes. Um produto também conta como cabaz
  * quando tem o atributo `nivel` (ouro, prata ou bronze).
  */
-export const CABAZ_CATEGORY_SLUGS = ['cabazes', 'cabazes-de-natal', 'cabazes-natal'];
+export const CABAZ_CATEGORY_SLUGS = [
+  'cabazes',
+  'cabazes-de-natal',
+  'cabazes-natal',
+  'cestas',
+  'cestas-de-natal',
+  'cestas-natal',
+];
 
 /**
  * Atributos do produto (`attributes` na API) que a loja interpreta.
@@ -87,7 +94,7 @@ export const PRODUCT_ATTRIBUTES = {
   format: 'formato',
   /** Nível do cabaz: ouro, prata ou bronze. */
   level: 'nivel',
-  /** Etiqueta de destaque no cartão do cabaz: "O mais completo". */
+  /** Etiqueta de destaque no cartão da cesta: "A mais completa". */
   badge: 'selo',
   /** Frase curta para o cartão e o topo da página do produto (até 255 caracteres). */
   summary: 'resumo',
@@ -135,14 +142,32 @@ export function hasApiFeature(feature: ApiFeature): boolean {
 }
 
 export type DeliveryType = 'PICKUP' | 'HOME_DELIVERY';
-export type PaymentMethod = 'MULTICAIXA_EXPRESS' | 'REFERENCE' | 'IN_STORE';
+/**
+ * A loja aceita Multicaixa Express e transferência bancária (IBAN), conforme as definições do back-office.
+ * `REFERENCE` e `IN_STORE` só existem em encomendas antigas.
+ */
+export type PaymentMethod = 'MULTICAIXA_EXPRESS' | 'IBAN' | 'REFERENCE' | 'IN_STORE';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+
+/** Métodos que a loja pode oferecer hoje (definições do back-office). */
+export const STORE_PAYMENT_METHODS: PaymentMethod[] = ['MULTICAIXA_EXPRESS', 'IBAN'];
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   MULTICAIXA_EXPRESS: 'Multicaixa Express',
+  IBAN: 'Transferência bancária (IBAN)',
   REFERENCE: 'Pagamento por referência',
   IN_STORE: 'Pagar na loja',
 };
+
+/** Onde o cliente levanta a encomenda: escolhe a loja, ou a loja fixa definida no back-office. */
+export type PickupMode = 'CUSTOMER_CHOICE' | 'FIXED';
+
+/** Dados para a transferência bancária, definidos no back-office. */
+export interface BankTransferDetails {
+  iban: string;
+  holder: string;
+  bank: string;
+}
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   PENDING: 'por pagar',
@@ -159,9 +184,15 @@ export interface CheckoutOptions {
     /** Zonas servidas, só para informação do cliente. */
     zones: string[];
   };
-  /** Métodos de pagamento oferecidos, por esta ordem. `IN_STORE` só aparece com levantamento. */
+  /** Métodos de pagamento oferecidos, por esta ordem (Multicaixa Express e/ou IBAN). */
   paymentMethods: PaymentMethod[];
+  /** Cartão de oferta (destinatário e mensagem) no checkout. */
+  giftEnabled: boolean;
   giftMessageMaxLength: number;
+  /** `FIXED`: o cliente não escolhe a loja; a encomenda vai para `fixedPostId`. */
+  pickup: { mode: PickupMode; fixedPostId: string | null };
+  /** Dados da transferência; null se o IBAN não estiver activo. */
+  bankTransfer: BankTransferDetails | null;
 }
 
 /**
@@ -171,8 +202,11 @@ export interface CheckoutOptions {
  */
 export const DEFAULT_CHECKOUT_OPTIONS: CheckoutOptions = {
   homeDelivery: { enabled: true, fee: 2500, zones: ['Luanda'] },
-  paymentMethods: ['MULTICAIXA_EXPRESS', 'REFERENCE', 'IN_STORE'],
+  paymentMethods: ['MULTICAIXA_EXPRESS'],
+  giftEnabled: true,
   giftMessageMaxLength: 240,
+  pickup: { mode: 'CUSTOMER_CHOICE', fixedPostId: null },
+  bankTransfer: null,
 };
 
 /** Limites dos campos do checkout. `notes` é o limite da API para as observações. */
@@ -189,7 +223,7 @@ export const CHECKOUT_LIMITS = {
 /** Ícones do sprite que podem ser atribuídos a uma categoria no back-office. */
 export const CATEGORY_ICONS = [
   { value: 'box', label: 'Caixa (genérico)' },
-  { value: 'gift', label: 'Presente (cabazes, ofertas)' },
+  { value: 'gift', label: 'Presente (cestas, ofertas)' },
   { value: 'basket', label: 'Cesto (mercearia)' },
   { value: 'bottle', label: 'Garrafa (bebidas)' },
   { value: 'cookie', label: 'Bolacha (snacks e doces)' },

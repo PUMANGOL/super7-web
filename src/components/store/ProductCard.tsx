@@ -33,6 +33,9 @@ export function ProductCard({ product }: { product: Product }) {
           <Link to={productPath(product)}>{product.name}</Link>
         </h3>
         {product.format && <p className="s7-produto__formato">{product.format}</p>}
+        {product.showStock && available && product.stock !== null && !inCampaign(product, 'escoamento') && (
+          <p className="s7-produto__stock">{product.stock} em stock</p>
+        )}
         <StockBar product={product} />
         <div className="s7-produto__rodape">
           <Price product={product} />

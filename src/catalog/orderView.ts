@@ -10,6 +10,9 @@ export interface OrderPaymentView {
   reference: string | null;
   amount: number | null;
   expiresAt: string | null;
+  /** IBAN: comprovativo enviado (nome e data); null enquanto não houver. */
+  proofFileName: string | null;
+  proofUploadedAt: string | null;
   /** `false` enquanto a API não gere pagamentos: o método vem do que o cliente escolheu. */
   fromApi: boolean;
 }
@@ -17,6 +20,8 @@ export interface OrderPaymentView {
 /** Encomenda pronta a mostrar: campos da API quando existem, senão o que ficou guardado no checkout. */
 export interface OrderView {
   id: string;
+  /** Referência da compra (5 caracteres); null nas encomendas antigas. */
+  compraRef: string | null;
   status: string;
   createdAt: string;
   customer: { fullName: string; phone: string; email: string; nif: string | null };
@@ -51,11 +56,14 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
     ? {
         method: order.payment.method,
         status: order.payment.status,
-        phone: order.payment.phone ?? null,
+        // O seguimento público não traz o telemóvel: usa-se o que ficou guardado no checkout.
+        phone: order.payment.phone ?? extras?.paymentPhone ?? null,
         entity: order.payment.entity ?? null,
         reference: order.payment.reference ?? null,
         amount: order.payment.amount ?? null,
         expiresAt: order.payment.expiresAt ?? null,
+        proofFileName: order.payment.proofFileName ?? null,
+        proofUploadedAt: order.payment.proofUploadedAt ?? null,
         fromApi: true,
       }
     : {
@@ -66,11 +74,14 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
         reference: null,
         amount: null,
         expiresAt: null,
+        proofFileName: null,
+        proofUploadedAt: null,
         fromApi: false,
       };
 
   return {
     id: order.id,
+    compraRef: order.compraRef ?? null,
     status: order.status,
     createdAt: order.createAt,
     customer: {

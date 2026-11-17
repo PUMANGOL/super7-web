@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchOrder, fetchOrderTracking, getOrderTotal, shortOrderId } from '../../api/orders';
+import { getApiErrorMessage } from '../../api/client';
+import { fetchOrder, fetchOrderTracking, getOrderTotal, shortOrderId, uploadPaymentProof } from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
 import { getLocalOrder, listLocalOrders, normaliseOrderId } from '../../catalog/localOrders';
 import { toOrderView, type OrderView } from '../../catalog/orderView';
+import { useCheckoutOptions } from '../../catalog/useStoreSettings';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
@@ -14,11 +16,12 @@ import { ORDER_STATUS } from '../../constants/orderStatus';
 import { useAuth } from '../../context/auth';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { usePickupPosts } from '../../hooks/usePickupPosts';
-import type { OrderCustomer } from '../../types/api';
+import type { ApiOrder, OrderCustomer } from '../../types/api';
 import { formatDate, formatKz, formatPhone } from '../../utils/format';
 
-type StepKey = 'received' | 'paid' | 'preparing' | 'ready';
+type StepKey = 'received' | 'awaiting' | 'paid' | 'preparing' | 'ready';
 
+/** Pago antes do levantamento ou da entrega (Multicaixa Express, IBAN; encomendas antigas por referência). */
 function isOnline(view: OrderView): boolean {
   return view.payment.method !== 'IN_STORE';
 }
@@ -37,7 +40,8 @@ function currentStep(view: OrderView): StepKey | 'done' {
     case ORDER_STATUS.PROCESSING:
       return 'preparing';
     default:
-      return isOnline(view) && view.payment.status === 'PAID' ? 'paid' : 'received';
+      if (!isOnline(view)) return 'received';
+      return view.payment.status === 'PAID' ? 'paid' : 'awaiting';
   }
 }
 
@@ -52,18 +56,27 @@ function orderTitle(view: OrderView): string {
       return home ? 'Encomenda a caminho' : 'Encomenda pronta a levantar';
     case ORDER_STATUS.PROCESSING:
       return 'Encomenda em preparação';
-    default:
-      return currentStep(view) === 'paid' ? 'Pagamento confirmado' : 'Encomenda recebida';
+    default: {
+      const step = currentStep(view);
+      if (step === 'paid') return 'Pagamento confirmado';
+      return step === 'awaiting' ? 'A aguardar o pagamento' : 'Encomenda recebida';
+    }
   }
 }
 
 function StatusSteps({ view }: { view: OrderView }) {
   const home = view.deliveryType === 'HOME_DELIVERY';
-  const paid = view.payment.status === 'PAID';
   const steps: { key: StepKey; title: string; note: string }[] = [
     { key: 'received', title: 'Recebida', note: 'Encomenda registada' },
     ...(isOnline(view)
-      ? [{ key: 'paid' as const, title: paid ? 'Pagamento confirmado' : 'Pagamento', note: PAYMENT_METHOD_LABELS[view.payment.method] }]
+      ? [
+          { key: 'awaiting' as const, title: 'Aguarda pagamento', note: PAYMENT_METHOD_LABELS[view.payment.method] },
+          {
+            key: 'paid' as const,
+            title: 'Pagamento confirmado',
+            note: view.payment.method === 'IBAN' ? 'Verificado pela loja' : 'Confirmado pelo Multicaixa Express',
+          },
+        ]
       : []),
     { key: 'preparing', title: 'Em preparação', note: 'Na loja Super7' },
     home
@@ -108,6 +121,10 @@ function PaymentCard({ view }: { view: OrderView }) {
     detail = payment.phone
       ? `Confirme o pagamento de ${formatKz(amount)} na aplicação Multicaixa Express do número ${formatPhone(payment.phone)}.`
       : `Confirme o pagamento de ${formatKz(amount)} na aplicação Multicaixa Express.`;
+  } else if (payment.method === 'IBAN') {
+    detail = payment.proofUploadedAt
+      ? `Comprovativo recebido a ${formatDate(payment.proofUploadedAt, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A loja vai confirmar o pagamento de ${formatKz(amount)}.`
+      : `Transfira ${formatKz(amount)} para o IBAN da loja e envie o comprovativo.`;
   } else {
     detail = payment.reference
       ? 'Pague num Multicaixa ou no homebanking com os dados abaixo.'
@@ -179,10 +196,354 @@ function DeliveryCard({ view }: { view: OrderView }) {
   );
 }
 
+/** Intervalo entre consultas enquanto o cliente confirma no Multicaixa Express (o seguimento aceita 30 por minuto). */
+const EXPRESS_POLL_MS = 5000;
+/** IBAN: a loja verifica o comprovativo à mão; basta perguntar de 30 em 30 segundos. */
+const IBAN_POLL_MS = 30000;
+/** Depois do prazo, a API ainda leva uns segundos a dar o pagamento como expirado; ao fim de 5 min deixa de se perguntar. */
+const EXPRESS_POLL_GRACE_MS = 5 * 60 * 1000;
+
+/** IBAN ainda por confirmar pela loja: o cliente fica no passo "Aguarda pagamento" (transferência e comprovativo). */
+function awaitingIbanPayment(order: ApiOrder | undefined): boolean {
+  const payment = order?.payment;
+  return Boolean(
+    order && payment && payment.method === 'IBAN' && payment.status === 'PENDING' && order.status !== ORDER_STATUS.CANCELLED,
+  );
+}
+
+/** Multicaixa Express ainda por confirmar: o cliente fica no passo "Aguarda pagamento" (2 minutos). */
+function awaitingExpressPayment(order: ApiOrder | undefined): boolean {
+  const payment = order?.payment;
+  if (!order || !payment || payment.method !== 'MULTICAIXA_EXPRESS' || payment.status !== 'PENDING') return false;
+  if (order.status === ORDER_STATUS.CANCELLED) return false;
+  if (!payment.expiresAt) return true;
+  const end = new Date(payment.expiresAt).getTime();
+  return Number.isNaN(end) || Date.now() < end + EXPRESS_POLL_GRACE_MS;
+}
+
+/** Segundos até `iso` (0 depois disso), actualizados a cada segundo; null sem data. */
+function useSecondsLeft(iso: string | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!iso) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [iso]);
+
+  if (!iso) return null;
+  const end = new Date(iso).getTime();
+  return Number.isNaN(end) ? null : Math.max(0, Math.ceil((end - now) / 1000));
+}
+
+function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function OrderSummary({ view }: { view: OrderView }) {
+  return (
+    <aside className="s7-resumo" aria-labelledby="s7-resumo-titulo">
+      <h2 id="s7-resumo-titulo">Artigos</h2>
+      <ul className="s7-resumo__itens">
+        {view.items.map((item) => (
+          <li key={item.id}>
+            <div className="s7-linha__media">
+              <ProductImage
+                product={{ name: item.book, image: item.coverImage ?? null, categoryIcon: 'box' }}
+                size={104}
+                width={52}
+                height={52}
+                alt=""
+              />
+            </div>
+            <p>
+              <strong>{item.book}</strong>
+              <span>
+                {Number(item.quantity)} × {formatKz(item.price)}
+              </span>
+            </p>
+            <b>{formatKz(item.subTotal ?? item.price * item.quantity)}</b>
+          </li>
+        ))}
+      </ul>
+      <dl className="s7-resumo__linhas">
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{formatKz(view.subtotal)}</dd>
+        </div>
+        <div>
+          <dt>Entrega</dt>
+          <dd>{view.deliveryFee > 0 ? formatKz(view.deliveryFee) : 'Sem custo'}</dd>
+        </div>
+      </dl>
+      <p className="s7-resumo__total">
+        <span>Total</span>
+        <strong>{formatKz(view.total)}</strong>
+      </p>
+      <Link className="s7-btn s7-btn--contorno s7-btn--bloco" to="/catalogo">
+        Continuar a comprar
+      </Link>
+    </aside>
+  );
+}
+
+/**
+ * Passo "Aguarda pagamento" do Multicaixa Express: a API enviou o pedido de pagamento (fila compra.online) e a página
+ * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (2 minutos, na API): recarregar a página
+ * não a reinicia. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando o pagamento é confirmado,
+ * falha ou expira, a página passa sozinha para o passo seguinte.
+ */
+function ExpressPaymentWait({ view }: { view: OrderView }) {
+  useDocumentTitle('Aguarda pagamento');
+  const { payment } = view;
+  const amount = payment.amount ?? view.total;
+  const secondsLeft = useSecondsLeft(payment.expiresAt);
+  const overdue = secondsLeft === 0;
+  const phone = payment.phone ? formatPhone(payment.phone) : null;
+
+  return (
+    <>
+      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
+        <CheckoutSteps current={3} />
+      </div>
+
+      <header className="s7-confirmacao">
+        <span className="s7-confirmacao__ico">
+          <Icon name="telemovel" />
+        </span>
+        <div>
+          <h1>Confirme o pagamento no telemóvel</h1>
+          <p>
+            Enviámos um pedido de pagamento de {formatKz(amount)} para o Multicaixa Express
+            {phone ? ` do número ${phone}` : ''}. Abra a aplicação e aceite o pagamento.
+          </p>
+        </div>
+        {view.compraRef && (
+          <p className="s7-confirmacao__ref">
+            <span>Referência da compra</span>
+            <b>{view.compraRef}</b>
+          </p>
+        )}
+      </header>
+
+      <div className="s7-encomenda">
+        <div className="s7-encomenda__col">
+          <section className="s7-bloco s7-espera" aria-labelledby="s7-espera-titulo">
+            <h2 id="s7-espera-titulo">A aguardar o pagamento</h2>
+            <p className="s7-espera__estado" role="status">
+              <span className="s7-espera__pulso" aria-hidden="true" />
+              {overdue
+                ? 'O prazo terminou. A confirmar o estado do pagamento…'
+                : 'Ainda não recebemos a confirmação. Esta página actualiza-se sozinha.'}
+            </p>
+            {secondsLeft !== null && !overdue && payment.expiresAt && (
+              <p className="s7-espera__prazo">
+                Tem <strong>{formatCountdown(secondsLeft)}</strong> para confirmar (até às{' '}
+                {formatDate(payment.expiresAt, { hour: '2-digit', minute: '2-digit' })}).
+              </p>
+            )}
+            <ol className="s7-espera__passos">
+              <li>Abra a aplicação Multicaixa Express{phone ? ` do número ${phone}` : ''}.</li>
+              <li>
+                Aceite o pagamento de {formatKz(amount)}
+                {view.compraRef ? `, com a referência ${view.compraRef}` : ''}.
+              </li>
+              <li>Volte a esta página: a confirmação aparece aqui e no seu e-mail.</li>
+            </ol>
+            <p className="s7-bloco__nota">
+              <Icon name="relogio" />
+              <span>
+                Se o pagamento não for aceite dentro do prazo, a encomenda é cancelada e os artigos voltam a ficar
+                disponíveis.
+              </span>
+            </p>
+          </section>
+        </div>
+        <OrderSummary view={view} />
+      </div>
+    </>
+  );
+}
+
+const PROOF_MAX_MB = 10;
+const PROOF_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Passo "Aguarda pagamento" da transferência bancária: os dados do IBAN (definições da loja, em
+ * GET /checkout/options) e o envio do comprovativo (PDF ou imagem). A loja confirma o pagamento no back-office;
+ * o OrderLoader volta a pedir a encomenda a cada IBAN_POLL_MS.
+ */
+function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: () => void }) {
+  useDocumentTitle('Aguarda pagamento');
+  const { options } = useCheckoutOptions();
+  const bank = options.bankTransfer;
+  const { payment } = view;
+  const amount = payment.amount ?? view.total;
+  const sent = payment.proofUploadedAt;
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const upload = useMutation({
+    mutationFn: (proof: File) => uploadPaymentProof(view.id, proof),
+    onSuccess: () => {
+      setFile(null);
+      setError(null);
+      onUploaded();
+    },
+    onError: (failure) => setError(getApiErrorMessage(failure, 'Não foi possível enviar o comprovativo. Tente novamente.')),
+  });
+
+  const choose = (event: ChangeEvent<HTMLInputElement>) => {
+    const chosen = event.target.files?.[0] ?? null;
+    setError(null);
+    setFile(null);
+    if (!chosen) return;
+    if (!PROOF_TYPES.includes(chosen.type) && !/\.(pdf|jpe?g|png|webp)$/i.test(chosen.name)) {
+      setError('Escolha um PDF ou uma imagem (JPG, PNG ou WebP).');
+      return;
+    }
+    if (chosen.size > PROOF_MAX_MB * 1024 * 1024) {
+      setError(`O ficheiro tem mais de ${PROOF_MAX_MB} MB. Envie uma versão mais pequena.`);
+      return;
+    }
+    setFile(chosen);
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!file) {
+      setError('Escolha o comprovativo da transferência.');
+      return;
+    }
+    upload.mutate(file);
+  };
+
+  const copyIban = async () => {
+    if (!bank) return;
+    try {
+      await navigator.clipboard.writeText(bank.iban.replace(/\s/g, ''));
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
+        <CheckoutSteps current={3} />
+      </div>
+
+      <header className="s7-confirmacao">
+        <span className="s7-confirmacao__ico">
+          <Icon name="recibo" />
+        </span>
+        <div>
+          <h1>{sent ? 'Comprovativo recebido' : 'Transfira e envie o comprovativo'}</h1>
+          <p>
+            {sent
+              ? 'A loja vai verificar a transferência e confirmar o pagamento. Recebe um e-mail quando estiver confirmado.'
+              : `Faça a transferência de ${formatKz(amount)} para o IBAN abaixo e envie o comprovativo nesta página.`}
+          </p>
+        </div>
+        {view.compraRef && (
+          <p className="s7-confirmacao__ref">
+            <span>Referência da compra</span>
+            <b>{view.compraRef}</b>
+          </p>
+        )}
+      </header>
+
+      <div className="s7-encomenda">
+        <div className="s7-encomenda__col">
+          <section className="s7-bloco" aria-labelledby="s7-iban-titulo">
+            <h2 id="s7-iban-titulo">Dados para a transferência</h2>
+            {bank ? (
+              <dl className="s7-referencia">
+                <dt>Montante</dt>
+                <dd>{formatKz(amount)}</dd>
+                <dt>IBAN</dt>
+                <dd className="s7-iban">
+                  <span>{bank.iban}</span>
+                  <button type="button" className="s7-ligacao" onClick={copyIban}>
+                    {copied ? 'Copiado' : 'Copiar'}
+                  </button>
+                </dd>
+                <dt>Titular</dt>
+                <dd>{bank.holder}</dd>
+                {bank.bank && (
+                  <>
+                    <dt>Banco</dt>
+                    <dd>{bank.bank}</dd>
+                  </>
+                )}
+                {view.compraRef && (
+                  <>
+                    <dt>Descrição</dt>
+                    <dd>{view.compraRef}</dd>
+                  </>
+                )}
+              </dl>
+            ) : (
+              <p>Os dados para a transferência estão no e-mail de confirmação da encomenda.</p>
+            )}
+            {view.compraRef && (
+              <p className="s7-bloco__nota">
+                <Icon name="alerta" />
+                <span>
+                  Escreva a referência <strong>{view.compraRef}</strong> na descrição da transferência: é assim que a
+                  loja identifica o seu pagamento.
+                </span>
+              </p>
+            )}
+          </section>
+
+          <section className="s7-bloco s7-espera" aria-labelledby="s7-comprovativo-titulo">
+            <h2 id="s7-comprovativo-titulo">Comprovativo</h2>
+            <p className="s7-espera__estado" role="status">
+              <span className="s7-espera__pulso" aria-hidden="true" />
+              {sent
+                ? `Recebido a ${formatDate(sent, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}${payment.proofFileName ? ` (${payment.proofFileName})` : ''}. A aguardar a confirmação da loja.`
+                : 'Ainda não recebemos o comprovativo.'}
+            </p>
+            <form className="s7-comprovativo" noValidate onSubmit={submit}>
+              <div className={error ? 's7-campo s7-campo--erro' : 's7-campo'}>
+                <label htmlFor="s7-comprovativo">{sent ? 'Enviar outro comprovativo' : 'Comprovativo da transferência'}</label>
+                <input
+                  id="s7-comprovativo"
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  aria-describedby="s7-comprovativo-ajuda s7-comprovativo-erro"
+                  aria-invalid={error ? true : undefined}
+                  onChange={choose}
+                />
+                <p className="s7-campo__ajuda" id="s7-comprovativo-ajuda">
+                  PDF ou imagem (JPG, PNG ou WebP), até {PROOF_MAX_MB} MB. Uma fotografia nítida do talão também serve.
+                </p>
+                <p className="s7-campo__erro" id="s7-comprovativo-erro" role="alert">
+                  {error}
+                </p>
+              </div>
+              <button className="s7-btn s7-btn--primario" type="submit" disabled={upload.isPending || !file}>
+                {upload.isPending ? 'A enviar…' : sent ? 'Substituir comprovativo' : 'Enviar comprovativo'}
+              </button>
+            </form>
+            <p className="s7-bloco__nota">
+              <Icon name="relogio" />
+              <span>A encomenda fica reservada enquanto a loja confirma o pagamento. Esta página actualiza-se sozinha.</span>
+            </p>
+          </section>
+        </div>
+        <OrderSummary view={view} />
+      </div>
+    </>
+  );
+}
+
 function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boolean }) {
   const { state } = useLocation();
   const justPlaced = Boolean((state as { placed?: boolean } | null)?.placed);
   const cancelled = view.status === ORDER_STATUS.CANCELLED;
+  const paid = view.payment.status === 'PAID';
   const firstName = view.customer.fullName.split(' ')[0];
   useDocumentTitle(`Encomenda ${shortOrderId(view.id)}`);
 
@@ -190,7 +551,7 @@ function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boole
     <>
       {justPlaced && (
         <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
-          <CheckoutSteps current={3} />
+          <CheckoutSteps current={paid ? 4 : 3} />
         </div>
       )}
 
@@ -209,6 +570,12 @@ function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boole
         <p className="s7-confirmacao__ref">
           <span>N.º da encomenda</span>
           <b>{view.id}</b>
+          {view.compraRef && (
+            <>
+              <span>Referência da compra</span>
+              <b>{view.compraRef}</b>
+            </>
+          )}
         </p>
       </header>
 
@@ -266,48 +633,7 @@ function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boole
           </div>
         </div>
 
-        <aside className="s7-resumo" aria-labelledby="s7-resumo-titulo">
-          <h2 id="s7-resumo-titulo">Artigos</h2>
-          <ul className="s7-resumo__itens">
-            {view.items.map((item) => (
-              <li key={item.id}>
-                <div className="s7-linha__media">
-                  <ProductImage
-                    product={{ name: item.book, image: item.coverImage ?? null, categoryIcon: 'box' }}
-                    size={104}
-                    width={52}
-                    height={52}
-                    alt=""
-                  />
-                </div>
-                <p>
-                  <strong>{item.book}</strong>
-                  <span>
-                    {Number(item.quantity)} × {formatKz(item.price)}
-                  </span>
-                </p>
-                <b>{formatKz(item.subTotal ?? item.price * item.quantity)}</b>
-              </li>
-            ))}
-          </ul>
-          <dl className="s7-resumo__linhas">
-            <div>
-              <dt>Subtotal</dt>
-              <dd>{formatKz(view.subtotal)}</dd>
-            </div>
-            <div>
-              <dt>Entrega</dt>
-              <dd>{view.deliveryFee > 0 ? formatKz(view.deliveryFee) : 'Sem custo'}</dd>
-            </div>
-          </dl>
-          <p className="s7-resumo__total">
-            <span>Total</span>
-            <strong>{formatKz(view.total)}</strong>
-          </p>
-          <Link className="s7-btn s7-btn--contorno s7-btn--bloco" to="/catalogo">
-            Continuar a comprar
-          </Link>
-        </aside>
+        <OrderSummary view={view} />
       </div>
     </>
   );
@@ -362,6 +688,11 @@ function OrderLoader({ id }: { id: string }) {
     queryFn: () => (staff ? fetchOrder(id) : fetchOrderTracking(id)),
     enabled: staff || tracking,
     retry: false,
+    // Multicaixa Express: volta a perguntar até o pagamento ser confirmado, falhar ou expirar.
+    refetchInterval: (query) => {
+      if (awaitingExpressPayment(query.state.data)) return EXPRESS_POLL_MS;
+      return awaitingIbanPayment(query.state.data) ? IBAN_POLL_MS : false;
+    },
   });
 
   const order = remote.data ?? local?.order ?? null;
@@ -383,7 +714,16 @@ function OrderLoader({ id }: { id: string }) {
     remote.data && local
       ? { ...remote.data, customer: mergeFilled(local.order.customer, remote.data.customer) }
       : order;
-  return <OrderDetails view={toOrderView(merged, local?.extras ?? null)} fromDevice={!remote.data} />;
+  const view = toOrderView(merged, local?.extras ?? null);
+  // Só com o estado vindo da API (que se vai actualizando): a cópia local fica sempre "pendente".
+  if (!staff && remote.data && awaitingExpressPayment(remote.data)) {
+    return <ExpressPaymentWait view={view} />;
+  }
+  // IBAN: mesmo sem o seguimento da API (cópia local), o cliente tem de poder enviar o comprovativo.
+  if (!staff && awaitingIbanPayment(remote.data ?? local?.order)) {
+    return <IbanPaymentWait view={view} onUploaded={() => void remote.refetch()} />;
+  }
+  return <OrderDetails view={view} fromDevice={!remote.data} />;
 }
 
 function OrderLookup({ initial = '', invalid = false }: { initial?: string; invalid?: boolean }) {

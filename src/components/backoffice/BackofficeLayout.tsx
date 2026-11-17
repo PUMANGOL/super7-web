@@ -1,6 +1,6 @@
 import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { BookOpen, ChevronLeft, ChevronRight, FolderOpen, MapPin, Package, ShoppingBag } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, FolderOpen, LayoutDashboard, MapPin, Package, Settings, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/auth';
 import type { Permission } from '../../utils/auth';
 import { BackofficeUserMenu } from './BackofficeUserMenu';
@@ -8,11 +8,13 @@ import './BackofficeLayout.css';
 import '../../pages/BackofficePage.css';
 
 const navItems: { to: string; label: string; icon: typeof Package; permission: Permission }[] = [
+  { to: '/backoffice/painel', label: 'Painel', icon: LayoutDashboard, permission: 'viewDashboard' },
   { to: '/backoffice/encomendas', label: 'Encomendas', icon: Package, permission: 'viewOrders' },
   { to: '/backoffice/produtos', label: 'Produtos', icon: ShoppingBag, permission: 'manageCatalog' },
   { to: '/backoffice/livros', label: 'Livros', icon: BookOpen, permission: 'manageCatalog' },
   { to: '/backoffice/categorias', label: 'Categorias', icon: FolderOpen, permission: 'manageCatalog' },
   { to: '/backoffice/postos', label: 'Lojas de levantamento', icon: MapPin, permission: 'manageCatalog' },
+  { to: '/backoffice/definicoes', label: 'Definições da loja', icon: Settings, permission: 'viewSettings' },
 ];
 
 export function BackofficeLayout() {

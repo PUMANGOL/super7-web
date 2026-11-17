@@ -5,7 +5,7 @@
  * docs/api-campos-em-falta.md. São todos opcionais, para o frontend funcionar com
  * a API actual (que os ignora nos pedidos e não os devolve) e com a futura.
  */
-import type { DeliveryType, PaymentMethod, PaymentStatus } from '../config/store';
+import type { BankTransferDetails, DeliveryType, PaymentMethod, PaymentStatus, PickupMode } from '../config/store';
 
 export type UUID = string;
 
@@ -58,7 +58,7 @@ export interface ProductStoreFields {
   /** Frase curta, até 255 caracteres. */
   summary?: string | null;
   hamperLevel?: HamperLevel | null;
-  /** Etiqueta do cartão do cabaz: "O mais completo". */
+  /** Etiqueta do cartão da cesta: "A mais completa". */
   badge?: string | null;
   hamperItems?: HamperItem[] | null;
   /** Destaque na página inicial. */
@@ -77,6 +77,8 @@ export interface ApiProduct extends ProductStoreFields {
   available: boolean;
   categoryId: UUID | null;
   category: string | null;
+  /** A categoria do produto pede para mostrar a quantidade em stock na loja. */
+  showStock?: boolean;
   coverImage: string | null;
   status: string;
   sellerId: UUID | null;
@@ -121,6 +123,31 @@ export interface ApiCheckoutOptions {
   homeDeliveryZones: string[];
   paymentMethods: PaymentMethod[];
   giftMessageMaxLength: number;
+  /** Cartão de oferta permitido no checkout. */
+  giftEnabled?: boolean;
+  /** `CUSTOMER_CHOICE` (o cliente escolhe a loja) ou `FIXED` (`fixedPickupPostId`). */
+  pickupMode?: PickupMode;
+  fixedPickupPostId?: UUID | null;
+  /** Dados da transferência bancária; null quando o IBAN não está activo. */
+  bankTransfer?: BankTransferDetails | null;
+}
+
+/** Definições da loja (back-office): `GET /settings` e `PUT /settings`. */
+export interface StoreSettings {
+  /** Métodos activos: `MULTICAIXA_EXPRESS` e/ou `IBAN`. */
+  paymentMethods: PaymentMethod[];
+  pickupMode: PickupMode;
+  /** Obrigatório com `pickupMode: FIXED`. */
+  fixedPickupPostId: UUID | null;
+  homeDeliveryEnabled: boolean;
+  giftEnabled: boolean;
+  /** Dados mostrados ao cliente no pagamento por IBAN. */
+  iban: string | null;
+  ibanHolder: string | null;
+  ibanBank: string | null;
+  /** Só na resposta: quando e por quem (e-mail) foram alteradas pela última vez. */
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 }
 
 export interface Category {
@@ -130,6 +157,8 @@ export interface Category {
   icon: string | null;
   color: string | null;
   description: string | null;
+  /** Mostrar a quantidade em stock dos produtos desta categoria na loja. */
+  showStock?: boolean;
 }
 
 export interface CategoryRequest {
@@ -138,6 +167,7 @@ export interface CategoryRequest {
   icon?: string;
   color?: string;
   description?: string;
+  showStock?: boolean;
 }
 
 export interface Level {
@@ -235,9 +265,13 @@ export interface OrderPayment {
   entity?: string | null;
   reference?: string | null;
   amount?: number | null;
-  /** Fim da validade da referência ou do pedido Multicaixa Express. */
+  /** Fim da validade do pedido Multicaixa Express (2 minutos). O IBAN não expira sozinho. */
   expiresAt?: string | null;
   paidAt?: string | null;
+  /** IBAN: comprovativo enviado pelo cliente (nome original, tipo e data). null enquanto não houver. */
+  proofFileName?: string | null;
+  proofContentType?: string | null;
+  proofUploadedAt?: string | null;
 }
 
 /** Envie `productId` (os livros também são produtos). */
@@ -281,6 +315,11 @@ export interface ApiOrderItem {
 
 export interface ApiOrder {
   id: UUID;
+  /**
+   * Referência da compra para o controlo dos pagamentos: 5 caracteres (letras e algarismos), gerada pela API.
+   * É a `referencia` do pedido de pagamento Multicaixa Express. null nas encomendas antigas.
+   */
+  compraRef?: string | null;
   customer: OrderCustomer;
   pickupPostId: UUID;
   pickupPost: string;

@@ -21,6 +21,7 @@ interface CategoryFormState {
   icon: string;
   color: string;
   description: string;
+  showStock: boolean;
 }
 
 function slugify(value: string): string {
@@ -41,6 +42,7 @@ function initialState(category: Category | null | undefined): CategoryFormState 
     icon: category?.icon ?? '',
     color: category?.color || '#017649',
     description: category?.description ?? '',
+    showStock: Boolean(category?.showStock),
   };
 }
 
@@ -54,7 +56,7 @@ function CategoryForm({ category, onClose }: { category?: Category | null; onClo
   const update = <K extends keyof CategoryFormState>(key: K, value: CategoryFormState[K]) => {
     setForm((current) => {
       const next = { ...current, [key]: value };
-      if (key === 'name' && !slugTouched) next.slug = slugify(value);
+      if (key === 'name' && !slugTouched) next.slug = slugify(String(value));
       return next;
     });
     if (errors[key]) setErrors((current) => ({ ...current, [key]: undefined }));
@@ -79,6 +81,7 @@ function CategoryForm({ category, onClose }: { category?: Category | null; onClo
           icon: form.icon || undefined,
           color: form.color.trim() || undefined,
           description: form.description.trim() || undefined,
+          showStock: form.showStock,
         },
       },
       {
@@ -122,8 +125,8 @@ function CategoryForm({ category, onClose }: { category?: Category | null; onClo
             <span className="form-error">{errors.slug}</span>
           ) : (
             <span className="form-label-hint">
-              Usado no endereço do catálogo (/catalogo?categoria={slugify(form.slug || form.name) || '…'}). Para os cabazes de
-              Natal use <strong>cabazes</strong>.
+              Usado no endereço do catálogo (/catalogo?categoria={slugify(form.slug || form.name) || '…'}). Para as cestas de
+              Natal use <strong>cestas</strong>.
             </span>
           )}
         </div>
@@ -173,6 +176,21 @@ function CategoryForm({ category, onClose }: { category?: Category | null; onClo
             rows={3}
           />
           {errors.description && <span className="form-error">{errors.description}</span>}
+        </div>
+
+        <div className="form-group form-group-full">
+          <label className="add-category-check" htmlFor="category-show-stock">
+            <input
+              id="category-show-stock"
+              type="checkbox"
+              checked={form.showStock}
+              onChange={(event) => update('showStock', event.target.checked)}
+            />
+            <span>
+              Mostrar a quantidade em stock na loja
+              <small>Nos produtos desta categoria aparece, por exemplo, «12 em stock».</small>
+            </span>
+          </label>
         </div>
       </div>
 

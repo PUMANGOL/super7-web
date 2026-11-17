@@ -9,9 +9,9 @@ import { formatKz } from '../../utils/format';
 import { Icon } from './Icon';
 
 const ART: Record<CabazLevel, { src: string; alt: string; width: number; height: number }> = {
-  prata: { src: cabazPrata, alt: 'Cabaz Prata com laço verde', width: 698, height: 880 },
-  ouro: { src: cabazOuro, alt: 'Cabaz Ouro com laço vermelho', width: 815, height: 880 },
-  bronze: { src: cabazBronze, alt: 'Cabaz Bronze com laço prateado', width: 641, height: 880 },
+  prata: { src: cabazPrata, alt: 'Cesta Prata com laço verde', width: 698, height: 880 },
+  ouro: { src: cabazOuro, alt: 'Cesta Ouro com laço vermelho', width: 815, height: 880 },
+  bronze: { src: cabazBronze, alt: 'Cesta Bronze com laço prateado', width: 641, height: 880 },
 };
 
 /** Ordem no documento = ordem visual da esquerda para a direita (também a ordem do Tab). */

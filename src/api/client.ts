@@ -1,8 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import type { ApiResponse, AuthUser } from '../types/api';
 
-const AUTH_TOKEN_KEY = 'access_token';
-const AUTH_USER_KEY = 'auth_user';
+export const AUTH_TOKEN_KEY = 'access_token';
+export const AUTH_USER_KEY = 'auth_user';
 
 /** Evento disparado quando a API rejeita o token (401 numa rota privada). */
 export const SESSION_EXPIRED_EVENT = 's7:sessao-expirada';
@@ -45,7 +45,8 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = getAuthToken();
 
-  if (token) {
+  // Um token passado à mão (logout, já com a sessão local apagada) não é substituído.
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -61,10 +62,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     const sentToken = Boolean(error.config?.headers?.Authorization);
-    const isSignIn = error.config?.url?.includes('/auth/sign-in');
+    const url = error.config?.url ?? '';
+    // O logout leva o token antigo: um erro nele nunca pode apagar uma sessão iniciada entretanto.
+    const isAuthRoute = url.includes('/auth/sign-in') || url.includes('/auth/sign-out');
 
     // Token inválido, expirado ou substituído por outro login: termina a sessão local.
-    if (error.response?.status === 401 && sentToken && !isSignIn) {
+    if (error.response?.status === 401 && sentToken && !isAuthRoute) {
       clearAuth();
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }

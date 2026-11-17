@@ -238,7 +238,7 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
         <div className="add-book-form-grid">
           <div className="form-group form-group-full">
             <label className="form-label" htmlFor={field('name')}>Nome</label>
-            <input id={field('name')} className={inputClass('name')} value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Ex.: Cabaz Ouro" />
+            <input id={field('name')} className={inputClass('name')} value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Ex.: Cesta Ouro" />
             {errors.name && <span className="form-error">{errors.name}</span>}
           </div>
           <div className="form-group">
@@ -287,7 +287,7 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
           </div>
           <div className="form-group form-group-full">
             <label className="form-label" htmlFor={field('summary')}>Resumo <small>(frase curta no cartão e no topo da página)</small></label>
-            <input id={field('summary')} className={inputClass('summary')} maxLength={255} value={form.summary} onChange={(e) => update('summary', e.target.value)} placeholder="Ex.: O cabaz mais completo, para a mesa de Natal de uma família grande." />
+            <input id={field('summary')} className={inputClass('summary')} maxLength={255} value={form.summary} onChange={(e) => update('summary', e.target.value)} placeholder="Ex.: A cesta mais completa, para a mesa de Natal de uma família grande." />
             {errors.summary && <span className="form-error">{errors.summary}</span>}
           </div>
           <div className="form-group form-group-full">
@@ -346,7 +346,7 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
                 <small className="product-form-hint">
                   {id === 'natal'
                     ? isCabaz
-                      ? 'Os cabazes entram sempre na campanha de Natal.'
+                      ? 'As cestas entram sempre na campanha de Natal.'
                       : 'Aparece no filtro e na faixa da campanha de Natal.'
                     : 'Mostra o preço riscado, a percentagem de desconto e o stock restante.'}
                 </small>
@@ -397,11 +397,11 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
       {/* Cabaz */}
       <section className="product-form-section">
         <div className="add-book-section-header">
-          <h2 className="add-book-section-title">Cabaz de Natal</h2>
+          <h2 className="add-book-section-title">Cesta de Natal</h2>
           <p className="add-book-section-subtitle">
             {cabazCategory
-              ? 'Este produto está numa categoria de cabazes.'
-              : 'Preencha só se o produto for um cabaz. Escolher um nível já o marca como cabaz.'}
+              ? 'Este produto está numa categoria de cestas.'
+              : 'Preencha só se o produto for uma cesta. Escolher um nível já o marca como cesta.'}
           </p>
         </div>
         <div className="add-book-form-grid">
@@ -417,7 +417,7 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor={field('badge')}>Selo <small>(opcional)</small></label>
-            <input id={field('badge')} className={inputClass('badge')} disabled={!isCabaz} value={form.badge} onChange={(e) => update('badge', e.target.value)} placeholder="Ex.: O mais completo" />
+            <input id={field('badge')} className={inputClass('badge')} disabled={!isCabaz} value={form.badge} onChange={(e) => update('badge', e.target.value)} placeholder="Ex.: A mais completa" />
           </div>
         </div>
 
@@ -513,7 +513,7 @@ export function BackofficeProductFormPage() {
             <div>
               <h1 className="section-title">{editing ? 'Editar produto' : 'Novo produto'}</h1>
               <p className="section-subtitle">
-                {editing && product ? product.name : 'Mercearia, bebidas, cabazes, auto… tudo o que a loja vende.'}
+                {editing && product ? product.name : 'Mercearia, bebidas, cestas, auto… tudo o que a loja vende.'}
               </p>
             </div>
             <Link to="/backoffice/produtos" className="btn btn-outline backoffice-add-book-back">
