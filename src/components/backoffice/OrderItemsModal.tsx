@@ -85,6 +85,14 @@ export function OrderItemsModal({ isOpen, onClose, order, onOrderUpdated }: Orde
                 {view.payment.status === 'PAID' && order.payment?.paidAt && (
                   <span className="order-items-modal-subvalue">Confirmado {formatDate(order.payment.paidAt)}</span>
                 )}
+                {(view.payment.status === 'FAILED' || view.payment.status === 'EXPIRED') &&
+                  (view.payment.failureMessage || view.payment.failureCode) && (
+                    <span className="order-items-modal-subvalue order-items-modal-subvalue--erro">
+                      {view.payment.failureMessage ?? 'Sem descrição'}
+                      {view.payment.failureCode && ` · ${view.payment.failureCode}`}
+                      {view.payment.failureType && ` (${view.payment.failureType})`}
+                    </span>
+                  )}
               </div>
             </div>
           )}

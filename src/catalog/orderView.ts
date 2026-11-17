@@ -15,6 +15,10 @@ export interface OrderPaymentView {
   proofUploadedAt: string | null;
   /** Fim da reserva: até lá o cliente pode pedir outro pagamento. null sem novas tentativas. */
   holdUntil: string | null;
+  /** Pedido recusado ou expirado: motivo, código e origem do erro enviados pelo Multicaixa Express. */
+  failureMessage: string | null;
+  failureCode: string | null;
+  failureType: string | null;
   /** `false` enquanto a API não gere pagamentos: o método vem do que o cliente escolheu. */
   fromApi: boolean;
 }
@@ -67,6 +71,9 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
         proofFileName: order.payment.proofFileName ?? null,
         proofUploadedAt: order.payment.proofUploadedAt ?? null,
         holdUntil: order.payment.holdUntil ?? null,
+        failureMessage: order.payment.failureMessage?.trim() || null,
+        failureCode: order.payment.failureCode?.trim() || null,
+        failureType: order.payment.failureType?.trim() || null,
         fromApi: true,
       }
     : {
@@ -80,6 +87,9 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
         proofFileName: null,
         proofUploadedAt: null,
         holdUntil: null,
+        failureMessage: null,
+        failureCode: null,
+        failureType: null,
         fromApi: false,
       };
 

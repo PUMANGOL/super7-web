@@ -233,6 +233,12 @@
   align-self: flex-start;
 }
 
+/* Motivo da recusa do Multicaixa Express, com o código e a origem do erro */
+.order-items-modal-subvalue--erro {
+  color: var(--danger, #b42318);
+  overflow-wrap: anywhere;
+}
+
 .order-payment-proof-error {
   margin: 0;
   font-size: 0.8125rem;

@@ -420,25 +420,245 @@
   display: block;
 }
 
-/* Pagamento por IBAN: dados da transferência e envio do comprovativo ------- */
-.s7-iban {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  font-variant-numeric: tabular-nums;
+/* Motivo da recusa do Multicaixa Express ("Recusado pelo cliente."): no cabeçalho escuro e no cartão do pagamento */
+.s7-motivo {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--s7-vermelho);
+  border-radius: var(--s7-raio);
+}
+.s7-motivo span,
+.s7-motivo small {
+  font-size: var(--s7-t-xs);
+}
+.s7-motivo span {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.s7-motivo strong {
   overflow-wrap: anywhere;
 }
-.s7-iban .s7-ligacao {
+.s7-confirmacao .s7-motivo {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.s7-ficha__item .s7-motivo,
+.s7-ficha__item .s7-motivo strong {
+  margin-top: 0;
+  background: var(--s7-vermelho-claro);
+  color: var(--s7-vermelho-escuro);
+}
+
+/* Pagamento por IBAN: dados da transferência e envio do comprovativo ------- */
+/* Dados da conta em blocos (BankTransfer.tsx): IBAN em destaque, destinatário e banco lado a lado, montante à parte */
+.s7-transferencia {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.s7-transferencia__item {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--s7-raio-s);
+  background: var(--s7-fundo);
+}
+.s7-transferencia__item--largo {
+  grid-column: 1 / -1;
+}
+.s7-transferencia__item--iban {
+  border-color: rgba(1, 118, 73, 0.22);
+  background: var(--s7-verde-claro);
+}
+.s7-transferencia dt {
+  font-size: var(--s7-t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--s7-tinta-3);
+}
+/* Valor à esquerda (parte em várias linhas se for comprido) e botão Copiar sempre à direita */
+.s7-transferencia dd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  font: 800 var(--s7-t-m) / 1.3 var(--s7-fonte-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--s7-tinta);
+}
+.s7-transferencia dd > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.s7-transferencia__iban {
+  font-size: clamp(1.0625rem, 0.95rem + 0.5vw, 1.3125rem);
+  letter-spacing: 0.03em;
+}
+/* Botões pequenos em forma de pílula: Copiar, e Trocar / Remover do comprovativo */
+.s7-copiar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--s7-linha-forte);
+  border-radius: 999px;
+  background: var(--s7-papel);
+  font: 700 var(--s7-t-xs) / 1 var(--s7-fonte-display);
+  color: var(--s7-verde-escuro);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+.s7-copiar .s7-ico {
+  width: 15px;
+  height: 15px;
+}
+.s7-copiar:hover {
+  border-color: var(--s7-verde);
+}
+.s7-copiar:focus-visible {
+  outline: 2px solid var(--s7-verde);
+  outline-offset: 2px;
+}
+.s7-copiar--feito,
+.s7-copiar--feito:hover {
+  border-color: var(--s7-verde);
+  background: var(--s7-verde);
+  color: #fff;
+}
+.s7-copiar--remover {
+  color: var(--s7-vermelho-escuro);
+}
+.s7-copiar--remover:hover {
+  border-color: var(--s7-vermelho);
+}
+/* "Trocar" é um <label>: sem isto herdava a letra dos rótulos dos campos (.s7-campo label) */
+.s7-ficheiro .s7-copiar {
+  font: 700 var(--s7-t-xs) / 1 var(--s7-fonte-display);
+}
+@media (max-width: 480px) {
+  .s7-transferencia {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* No telemóvel o IBAN fica numa linha e o botão passa para baixo */
+  .s7-transferencia__item--iban dd {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}
+
+/* Comprovativo: zona para escolher ou largar o ficheiro; o input fica escondido, mas recebe o foco do teclado */
+.s7-ficheiro {
+  position: relative;
+}
+.s7-ficheiro .s7-ficheiro__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: -1px;
   padding: 0;
   border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--s7-t-s);
-  font-weight: 700;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  opacity: 0;
+}
+.s7-ficheiro__zona {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px dashed var(--s7-linha-forte);
+  border-radius: var(--s7-raio-s);
+  background: var(--s7-fundo);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+label.s7-ficheiro__zona {
+  cursor: pointer;
+  font-weight: inherit;
+}
+label.s7-ficheiro__zona:hover,
+.s7-ficheiro--arrastar .s7-ficheiro__zona {
+  border-color: var(--s7-verde);
+  background: var(--s7-verde-claro);
+}
+.s7-ficheiro__input:focus-visible + .s7-ficheiro__zona {
+  outline: 2px solid var(--s7-verde);
+  outline-offset: 2px;
+}
+.s7-ficheiro--escolhido .s7-ficheiro__zona {
+  border-style: solid;
+  border-color: var(--s7-verde);
+  background: var(--s7-papel);
+}
+.s7-ficheiro--erro .s7-ficheiro__zona {
+  border-color: var(--s7-vermelho);
+  background: var(--s7-vermelho-claro);
+}
+.s7-ficheiro__ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--s7-papel);
+  color: var(--s7-verde);
+}
+.s7-ficheiro--escolhido .s7-ficheiro__ico {
+  background: var(--s7-verde-claro);
+}
+.s7-ficheiro--erro .s7-ficheiro__ico {
+  background: var(--s7-papel);
+  color: var(--s7-vermelho-escuro);
+}
+.s7-ficheiro__ico .s7-ico {
+  width: 22px;
+  height: 22px;
+}
+.s7-ficheiro__texto {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.s7-ficheiro__texto strong {
+  font: 700 var(--s7-t-s) / 1.35 var(--s7-fonte-display);
+  color: var(--s7-tinta);
+  overflow-wrap: anywhere;
+}
+.s7-ficheiro__texto small {
+  font-size: var(--s7-t-xs);
+  color: var(--s7-tinta-3);
+}
+.s7-ficheiro__link {
   color: var(--s7-verde-escuro);
   text-decoration: underline;
-  cursor: pointer;
+  text-underline-offset: 3px;
+}
+.s7-ficheiro__accoes {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (max-width: 480px) {
+  .s7-ficheiro__zona {
+    flex-wrap: wrap;
+  }
+  .s7-ficheiro__accoes {
+    width: 100%;
+    padding-left: 58px;
+  }
 }
 .s7-comprovativo {
   display: grid;
@@ -448,63 +668,19 @@
 .s7-comprovativo .s7-campo {
   width: 100%;
 }
-.s7-comprovativo input[type="file"],
-.s7-campo input[type="file"] {
-  max-width: 100%;
-  padding: 10px;
-  border: 1px dashed var(--s7-linha-forte);
-  border-radius: var(--s7-raio-s);
-  background: var(--s7-fundo);
-  cursor: pointer;
-}
-.s7-campo--erro input[type="file"] {
-  border-color: var(--s7-vermelho);
-}
-/* Nomes e IBAN longos passam à linha em vez de saírem da caixa (super7.css não deixa partir os valores) */
-.s7-transferencia dd {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.s7-transferencia .s7-iban {
-  justify-content: flex-end;
-}
-/* Telemóvel: cada rótulo por cima do valor, para o IBAN e o destinatário caberem numa linha */
-@media (max-width: 480px) {
-  .s7-transferencia {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
-  }
-  .s7-transferencia dd {
-    margin-bottom: 8px;
-    text-align: left;
-  }
-  .s7-transferencia dd:last-child {
-    margin-bottom: 0;
-  }
-  .s7-transferencia .s7-iban {
-    justify-content: flex-start;
-  }
-}
 /* Checkout: dados da conta logo que se escolhe a transferência bancária */
 .s7-transferencia-dados {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 .s7-transferencia-dados__titulo {
   font-size: var(--s7-t-s);
   font-weight: 700;
 }
-.s7-comprovativo__remover {
-  justify-self: start;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
+.s7-transferencia-dados__ajuda {
+  margin-top: -4px;
   font-size: var(--s7-t-s);
-  font-weight: 700;
-  color: var(--s7-vermelho-escuro);
-  text-decoration: underline;
-  cursor: pointer;
+  color: var(--s7-tinta-2);
 }
 .s7-consulta__accoes {
   display: flex;

@@ -279,6 +279,13 @@ export interface OrderPayment {
   holdUntil?: string | null;
   /** Pedidos de pagamento feitos (1 no checkout). */
   attempts?: number | null;
+  /**
+   * FAILED/EXPIRED: motivo enviado pelo Multicaixa Express ("Recusado pelo cliente."), o código ("EPMS_940") e a
+   * origem do erro ("EPMS_PROCESSOR"). null sem motivo, depois de uma nova tentativa e com o pagamento confirmado.
+   */
+  failureMessage?: string | null;
+  failureCode?: string | null;
+  failureType?: string | null;
 }
 
 /** Nova tentativa de pagamento pedida pelo cliente: Multicaixa Express outra vez ou mudança para IBAN. */

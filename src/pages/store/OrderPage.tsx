@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../../api/client';
 import { fetchOrder, fetchOrderTracking, getOrderTotal, shortOrderId, uploadPaymentProof } from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
 import { getLocalOrder, listLocalOrders, normaliseOrderId, updateLocalOrderPayment } from '../../catalog/localOrders';
-import { toOrderView, type OrderView } from '../../catalog/orderView';
+import { toOrderView, type OrderPaymentView, type OrderView } from '../../catalog/orderView';
 import { useCheckoutOptions } from '../../catalog/useStoreSettings';
-import { checkProofFile, PROOF_ACCEPT, PROOF_HELP } from '../../catalog/paymentProof';
-import { BankTransferList } from '../../components/store/BankTransfer';
+import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
+import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
@@ -106,6 +106,22 @@ function StatusSteps({ view }: { view: OrderView }) {
   );
 }
 
+/**
+ * Motivo de um pedido Multicaixa Express recusado ou expirado, como chega da equipa de pagamentos ("Recusado pelo
+ * cliente."), com o código do erro para o cliente indicar à loja se precisar de ajuda.
+ */
+function PaymentFailureReason({ payment }: { payment: OrderPaymentView }) {
+  const unsuccessful = payment.status === 'FAILED' || payment.status === 'EXPIRED';
+  if (!unsuccessful || (!payment.failureMessage && !payment.failureCode)) return null;
+  return (
+    <p className="s7-motivo">
+      <span>Resposta do Multicaixa Express</span>
+      <strong>{payment.failureMessage ?? 'Pagamento não concluído.'}</strong>
+      {payment.failureCode && <small>Código {payment.failureCode}</small>}
+    </p>
+  );
+}
+
 function PaymentCard({ view }: { view: OrderView }) {
   const { payment, total } = view;
   const amount = payment.amount ?? total;
@@ -143,6 +159,7 @@ function PaymentCard({ view }: { view: OrderView }) {
         <strong>{PAYMENT_METHOD_LABELS[payment.method]}</strong>
       </p>
       <p>{detail}</p>
+      <PaymentFailureReason payment={payment} />
       {payment.method === 'REFERENCE' && payment.reference && payment.status === 'PENDING' && (
         <dl className="s7-referencia">
           <dt>Entidade</dt>
@@ -414,6 +431,7 @@ function PaymentRetry({ view, onRetried }: { view: OrderView; onRetried: (order:
               : 'O pedido de pagamento no Multicaixa Express foi recusado ou não foi possível concluí-lo.'}{' '}
             {payment.holdUntil && <>A encomenda continua reservada até {formatHold(payment.holdUntil)}.</>}
           </p>
+          <PaymentFailureReason payment={payment} />
         </div>
         {view.compraRef && (
           <p className="s7-confirmacao__ref">
@@ -488,8 +506,7 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
     onError: (failure) => setError(getApiErrorMessage(failure, 'Não foi possível enviar o comprovativo. Tente novamente.')),
   });
 
-  const choose = (event: ChangeEvent<HTMLInputElement>) => {
-    const chosen = event.target.files?.[0] ?? null;
+  const choose = (chosen: File | null) => {
     setError(null);
     setFile(null);
     if (!chosen) return;
@@ -567,12 +584,11 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
             <form className="s7-comprovativo" noValidate onSubmit={submit}>
               <div className={error ? 's7-campo s7-campo--erro' : 's7-campo'}>
                 <label htmlFor="s7-comprovativo">{sent ? 'Enviar outro comprovativo' : 'Comprovativo da transferência'}</label>
-                <input
+                <ProofFileInput
                   id="s7-comprovativo"
-                  type="file"
-                  accept={PROOF_ACCEPT}
-                  aria-describedby="s7-comprovativo-ajuda s7-comprovativo-erro"
-                  aria-invalid={error ? true : undefined}
+                  file={file}
+                  invalid={Boolean(error)}
+                  describedBy="s7-comprovativo-ajuda s7-comprovativo-erro"
                   onChange={choose}
                 />
                 <p className="s7-campo__ajuda" id="s7-comprovativo-ajuda">

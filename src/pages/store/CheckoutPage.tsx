@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getApiErrorMessage, getApiErrorMessages, getApiStatus } from '../../api/client';
 import { createOrder, uploadPaymentProof } from '../../api/orders';
@@ -8,8 +8,8 @@ import { buildOrderNotes, isValidEmail, isValidMobile, normalisePhone, tomorrowI
 import { saveLocalOrder } from '../../catalog/localOrders';
 import { CATALOG_QUERY_KEY } from '../../catalog/useCatalog';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
-import { checkProofFile, PROOF_ACCEPT, PROOF_HELP } from '../../catalog/paymentProof';
-import { BankTransferList } from '../../components/store/BankTransfer';
+import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
+import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs, CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
@@ -189,7 +189,6 @@ export function CheckoutPage() {
   const { options } = useCheckoutOptions();
   const mutation = useMutation({ mutationFn: createOrder });
   const [sendingProof, setSendingProof] = useState(false);
-  const proofInput = useRef<HTMLInputElement>(null);
 
   const [minDate] = useState(tomorrowIsoDate);
   const christmas = campaigns.natal;
@@ -276,21 +275,12 @@ export function CheckoutPage() {
     'aria-describedby': describedBy(name, help),
   });
 
-  // O comprovativo é verificado logo ao escolher (tipo e tamanho), sem esperar por "Confirmar encomenda".
-  const chooseProof = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
+  // O comprovativo é verificado logo ao escolher, largar ou remover (tipo e tamanho), sem esperar por "Confirmar
+  // encomenda". Um ficheiro recusado fica à vista, com o erro, para se trocar.
+  const chooseProof = (file: File | null) => {
     set('paymentProof', file);
     const problem = file ? checkProofFile(file) : null;
     setErrors((current) => ({ ...current, paymentProof: problem ?? undefined }));
-  };
-
-  const removeProof = () => {
-    set('paymentProof', null);
-    setErrors((current) => ({ ...current, paymentProof: undefined }));
-    if (proofInput.current) {
-      proofInput.current.value = '';
-      proofInput.current.focus();
-    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -767,6 +757,10 @@ export function CheckoutPage() {
                   {options.bankTransfer ? (
                     <div className="s7-transferencia-dados">
                       <p className="s7-transferencia-dados__titulo">Dados para a transferência</p>
+                      <p className="s7-transferencia-dados__ajuda">
+                        Transfira o montante exacto a partir do seu banco. Use os botões <strong>Copiar</strong> para
+                        colar os dados na aplicação.
+                      </p>
                       <BankTransferList bank={options.bankTransfer} amount={total} />
                     </div>
                   ) : (
@@ -787,18 +781,13 @@ export function CheckoutPage() {
                       help={PROOF_HELP}
                       wide
                     >
-                      <input
-                        {...inputProps('paymentProof', true)}
-                        ref={proofInput}
-                        type="file"
-                        accept={PROOF_ACCEPT}
+                      <ProofFileInput
+                        id={fieldId('paymentProof')}
+                        file={form.paymentProof}
+                        invalid={Boolean(errors.paymentProof)}
+                        describedBy={describedBy('paymentProof', true)}
                         onChange={chooseProof}
                       />
-                      {form.paymentProof && (
-                        <button type="button" className="s7-ligacao s7-comprovativo__remover" onClick={removeProof}>
-                          Remover ficheiro
-                        </button>
-                      )}
                     </Field>
                   </div>
                 </div>
