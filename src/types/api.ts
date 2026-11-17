@@ -272,6 +272,20 @@ export interface OrderPayment {
   proofFileName?: string | null;
   proofContentType?: string | null;
   proofUploadedAt?: string | null;
+  /**
+   * Fim da reserva da encomenda: até lá, um pedido Express expirado ou recusado (FAILED/EXPIRED) não a cancela e o
+   * cliente pode pedir outro pagamento (`POST /order/{id}/payment`). null sem novas tentativas.
+   */
+  holdUntil?: string | null;
+  /** Pedidos de pagamento feitos (1 no checkout). */
+  attempts?: number | null;
+}
+
+/** Nova tentativa de pagamento pedida pelo cliente: Multicaixa Express outra vez ou mudança para IBAN. */
+export interface PaymentRetryRequest {
+  method: 'MULTICAIXA_EXPRESS' | 'IBAN';
+  /** Multicaixa Express: telemóvel com 9 dígitos, começado por 9. */
+  phone?: string;
 }
 
 /** Envie `productId` (os livros também são produtos). */

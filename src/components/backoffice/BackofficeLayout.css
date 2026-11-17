@@ -42,7 +42,7 @@
 }
 
 .backoffice-sidebar-logo img {
-  height: 1.75rem;
+  height: 2.25rem;
   width: auto;
   transition: opacity 0.2s;
 }
@@ -172,7 +172,7 @@
     opacity: 1;
     pointer-events: auto;
     width: auto;
-    height: 1.75rem;
+    height: 2.25rem;
   }
 
   .backoffice-sidebar-nav {

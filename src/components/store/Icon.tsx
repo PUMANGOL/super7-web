@@ -29,6 +29,8 @@ export function IconSprite() {
         <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
         <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
         <symbol id="i-seta-esq" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6" /></symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5.5 6.5 6.5L9 18.5" /></symbol>
+        <symbol id="i-chevron-esq" viewBox="0 0 24 24"><path d="M15 5.5 8.5 12l6.5 6.5" /></symbol>
         <symbol id="i-menos" viewBox="0 0 24 24"><path d="M6 12h12" /></symbol>
         <symbol id="i-mais" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" /></symbol>
         <symbol id="i-lixo" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" /></symbol>

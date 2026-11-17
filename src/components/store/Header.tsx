@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import logoSuper7 from '../../assets/img/logo-super7.webp';
+import logoSuper7Branco from '../../assets/img/logo-super7-branco.webp';
 import { inCampaign } from '../../catalog/query';
 import { useCatalog } from '../../catalog/useCatalog';
 import { useCampaigns } from '../../catalog/useStoreSettings';
@@ -7,13 +9,11 @@ import { useCart } from '../../context/cart';
 import { plural } from '../../utils/format';
 import { Icon } from './Icon';
 
+/** Logótipo oficial do Super7 (versão branca, `light`, para fundos escuros) seguido de "digital". */
 export function Logo({ light = false }: { light?: boolean }) {
-  // Logótipo tipográfico provisório: substituir pelo SVG oficial do Super7.
   return (
     <Link className={light ? 's7-logo s7-logo--claro' : 's7-logo'} to="/" aria-label="Super7 Digital, página inicial">
-      <span className="s7-logo__marca">
-        SUPER<b>7</b>
-      </span>
+      <img className="s7-logo__img" src={light ? logoSuper7Branco : logoSuper7} alt="" width={446} height={160} />
       <span className="s7-logo__digital">digital</span>
     </Link>
   );
@@ -121,9 +121,64 @@ function useHideOnScroll(ref: RefObject<HTMLElement | null>) {
   }, [ref]);
 }
 
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+
+/** Largura das setas (com o esbatido) que tapam as pontas do menu de categorias. */
+const NAV_ARROW_WIDTH = 64;
+
+/**
+ * Setas do menu de categorias: indica de que lado há categorias escondidas (quando não cabem na largura)
+ * e desliza o menu uma "página" de cada vez. Mede de novo ao deslizar, ao mudar a largura do ecrã e
+ * quando a lista muda (categorias carregadas, letra descarregada).
+ */
+function useNavArrows(scrollerRef: RefObject<HTMLElement | null>, listRef: RefObject<HTMLElement | null>) {
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const list = listRef.current;
+    if (!scroller || !list) return;
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const max = scroller.scrollWidth - scroller.clientWidth;
+      const start = scroller.scrollLeft > 1;
+      const end = scroller.scrollLeft < max - 1;
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    const observer = new ResizeObserver(schedule);
+    observer.observe(scroller);
+    observer.observe(list);
+    scroller.addEventListener('scroll', schedule, { passive: true });
+    return () => {
+      observer.disconnect();
+      scroller.removeEventListener('scroll', schedule);
+      cancelAnimationFrame(frame);
+    };
+  }, [scrollerRef, listRef]);
+
+  const scrollPage = (direction: 1 | -1) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const step = Math.max(scroller.clientWidth - 2 * NAV_ARROW_WIDTH, 120);
+    scroller.scrollBy({ left: direction * step, behavior: scrollBehavior() });
+  };
+
+  return { ...edges, scrollPage };
+}
+
 export function Header() {
   const headerRef = useRef<HTMLElement>(null);
+  const navScrollerRef = useRef<HTMLDivElement>(null);
+  const navListRef = useRef<HTMLDivElement>(null);
   useHideOnScroll(headerRef);
+  const navArrows = useNavArrows(navScrollerRef, navListRef);
   const location = useLocation();
   const { units } = useCart();
   const { data: catalog } = useCatalog();
@@ -145,6 +200,22 @@ export function Header() {
     isActive('escoamento') && (!catalog || catalog.products.some((product) => inCampaign(product, 'escoamento')));
   // O link "Cestas de Natal" já cobre a categoria das cestas.
   const categories = (catalog?.categories ?? []).filter((category) => !(natalActive && category.isCabazes));
+
+  // A categoria aberta fica à vista no menu e fora das setas (ex.: link partilhado para uma categoria do fim).
+  useEffect(() => {
+    const scroller = navScrollerRef.current;
+    const active = scroller?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!scroller || !active) return;
+    const box = scroller.getBoundingClientRect();
+    const link = active.getBoundingClientRect();
+    const delta =
+      link.left < box.left + NAV_ARROW_WIDTH
+        ? link.left - box.left - NAV_ARROW_WIDTH
+        : link.right > box.right - NAV_ARROW_WIDTH
+          ? link.right - box.right + NAV_ARROW_WIDTH
+          : 0;
+    if (delta) scroller.scrollBy({ left: delta, behavior: scrollBehavior() });
+  }, [location.pathname, location.search, categories.length]);
 
   return (
     <>
@@ -175,39 +246,73 @@ export function Header() {
         </div>
 
         <nav className="s7-nav" aria-label="Categorias">
-          <div className="s7-contentor s7-nav__in">
-            {natalActive && (
-              <Link
-                className="s7-nav__link s7-nav__link--natal"
-                to="/catalogo?campanha=natal"
-                aria-current={current(isCurrent('', 'natal'))}
+          <div className="s7-contentor s7-nav__caixa">
+            <div className="s7-nav__in" ref={navScrollerRef}>
+              <div className="s7-nav__lista" ref={navListRef}>
+                {natalActive && (
+                  <Link
+                    className="s7-nav__link s7-nav__link--natal"
+                    to="/catalogo?campanha=natal"
+                    aria-current={current(isCurrent('', 'natal'))}
+                  >
+                    <Icon name="gift" /> {CAMPAIGNS.natal.label}
+                  </Link>
+                )}
+                {escoamentoActive && (
+                  <Link
+                    className="s7-nav__link s7-nav__link--escoamento"
+                    to="/catalogo?campanha=escoamento"
+                    aria-current={current(isCurrent('', 'escoamento'))}
+                  >
+                    <Icon name="tag" /> {CAMPAIGNS.escoamento.label}
+                  </Link>
+                )}
+                {(natalActive || escoamentoActive) && <span className="s7-nav__sep" aria-hidden="true" />}
+                {categories.map((category) => (
+                  <Link
+                    key={category.id}
+                    className="s7-nav__link"
+                    to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}
+                    aria-current={current(isCurrent(category.slug))}
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+                <Link className="s7-nav__link" to="/catalogo" aria-current={current(isCurrent())}>
+                  Todos os produtos
+                </Link>
+              </div>
+            </div>
+            {/* Só para o rato: com o teclado, o browser desliza o menu até à ligação com o foco,
+                e o leitor de ecrã lê a lista toda. */}
+            {navArrows.start && (
+              <button
+                type="button"
+                className="s7-nav__seta s7-nav__seta--esq"
+                tabIndex={-1}
+                aria-hidden="true"
+                title="Categorias anteriores"
+                onClick={() => navArrows.scrollPage(-1)}
               >
-                <Icon name="gift" /> {CAMPAIGNS.natal.label}
-              </Link>
+                <span>
+                  <Icon name="chevron-esq" />
+                </span>
+              </button>
             )}
-            {escoamentoActive && (
-              <Link
-                className="s7-nav__link s7-nav__link--escoamento"
-                to="/catalogo?campanha=escoamento"
-                aria-current={current(isCurrent('', 'escoamento'))}
+            {navArrows.end && (
+              <button
+                type="button"
+                className="s7-nav__seta s7-nav__seta--dir"
+                tabIndex={-1}
+                aria-hidden="true"
+                title="Mais categorias"
+                onClick={() => navArrows.scrollPage(1)}
               >
-                <Icon name="tag" /> {CAMPAIGNS.escoamento.label}
-              </Link>
+                <span>
+                  <Icon name="chevron" />
+                </span>
+              </button>
             )}
-            {(natalActive || escoamentoActive) && <span className="s7-nav__sep" aria-hidden="true" />}
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                className="s7-nav__link"
-                to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}
-                aria-current={current(isCurrent(category.slug))}
-              >
-                {category.name}
-              </Link>
-            ))}
-            <Link className="s7-nav__link" to="/catalogo" aria-current={current(isCurrent())}>
-              Todos os produtos
-            </Link>
           </div>
         </nav>
       </header>

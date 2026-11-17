@@ -1,6 +1,7 @@
 import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { BookOpen, ChevronLeft, ChevronRight, FolderOpen, LayoutDashboard, MapPin, Package, Settings, ShoppingBag } from 'lucide-react';
+import logoSuper7 from '../../assets/img/logo-super7.webp';
 import { useAuth } from '../../context/auth';
 import type { Permission } from '../../utils/auth';
 import { BackofficeUserMenu } from './BackofficeUserMenu';
@@ -26,7 +27,7 @@ export function BackofficeLayout() {
       <aside className={`backoffice-sidebar${collapsed ? ' backoffice-sidebar--collapsed' : ''}`}>
         <div className="backoffice-sidebar-top">
           <Link to="/" className="backoffice-sidebar-logo" title="Ir para a loja Super7 Digital">
-            <img src="/logo-pumangol.svg" alt="Pumangol — Cria boa energia" />
+            <img src={logoSuper7} alt="Super7" width={446} height={160} />
           </Link>
           {!collapsed && <p className="backoffice-sidebar-product">Super7 Digital · Back-office</p>}
         </div>

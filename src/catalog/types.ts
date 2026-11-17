@@ -14,7 +14,7 @@ export type IconName =
   | 'pesquisa' | 'carrinho' | 'gift' | 'tag' | 'pin' | 'camiao' | 'relogio' | 'check'
   | 'seta' | 'seta-esq' | 'menos' | 'mais' | 'lixo' | 'filtro' | 'telemovel' | 'escudo'
   | 'box' | 'bottle' | 'basket' | 'cookie' | 'sparkles' | 'drop' | 'book' | 'recibo'
-  | 'loja' | 'cartao' | 'dinheiro' | 'equipa' | 'alerta';
+  | 'loja' | 'cartao' | 'dinheiro' | 'equipa' | 'alerta' | 'chevron' | 'chevron-esq';
 
 /** Produto tal como a loja o usa: dados da API + atributos de campanha já interpretados. */
 export interface Product {

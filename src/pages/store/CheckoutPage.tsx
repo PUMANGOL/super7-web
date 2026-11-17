@@ -1,13 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getApiErrorMessages, getApiStatus } from '../../api/client';
-import { createOrder } from '../../api/orders';
+import { getApiErrorMessage, getApiErrorMessages, getApiStatus } from '../../api/client';
+import { createOrder, uploadPaymentProof } from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
 import { buildOrderNotes, isValidEmail, isValidMobile, normalisePhone, tomorrowIsoDate } from '../../catalog/checkout';
 import { saveLocalOrder } from '../../catalog/localOrders';
 import { CATALOG_QUERY_KEY } from '../../catalog/useCatalog';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
+import { checkProofFile, PROOF_ACCEPT, PROOF_HELP } from '../../catalog/paymentProof';
+import { BankTransferList } from '../../components/store/BankTransfer';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs, CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
@@ -45,17 +47,19 @@ interface CheckoutForm {
   giftMessage: string;
   paymentMethod: PaymentMethod;
   paymentPhone: string;
+  /** IBAN: comprovativo da transferência, opcional (também se pode enviar depois, na página da encomenda). */
+  paymentProof: File | null;
 }
 
 type FieldName =
   | 'fullName' | 'phone' | 'email' | 'nif' | 'pickupPostId' | 'pickupDate' | 'address' | 'district'
-  | 'addressReference' | 'observations' | 'recipient' | 'giftMessage' | 'paymentPhone';
+  | 'addressReference' | 'observations' | 'recipient' | 'giftMessage' | 'paymentPhone' | 'paymentProof';
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 /** Ordem dos campos no ecrã: o foco vai para o primeiro com erro. */
 const FIELD_ORDER: FieldName[] = [
   'fullName', 'phone', 'email', 'nif', 'pickupPostId', 'pickupDate', 'address', 'district',
-  'addressReference', 'observations', 'recipient', 'giftMessage', 'paymentPhone',
+  'addressReference', 'observations', 'recipient', 'giftMessage', 'paymentPhone', 'paymentProof',
 ];
 
 const fieldId = (name: FieldName) => `s7-${name}`;
@@ -110,6 +114,10 @@ function validate(form: CheckoutForm, context: Context): FieldErrors {
   if (form.gift && !form.recipient.trim()) errors.recipient = 'Indique para quem é a oferta.';
   if (paymentMethod === 'MULTICAIXA_EXPRESS' && !isValidMobile(form.paymentPhone)) {
     errors.paymentPhone = 'Indique o número associado ao Multicaixa Express.';
+  }
+  if (paymentMethod === 'IBAN' && form.paymentProof) {
+    const problem = checkProofFile(form.paymentProof);
+    if (problem) errors.paymentProof = problem;
   }
 
   return errors;
@@ -180,6 +188,8 @@ export function CheckoutPage() {
   const { campaigns, isActive } = useCampaigns();
   const { options } = useCheckoutOptions();
   const mutation = useMutation({ mutationFn: createOrder });
+  const [sendingProof, setSendingProof] = useState(false);
+  const proofInput = useRef<HTMLInputElement>(null);
 
   const [minDate] = useState(tomorrowIsoDate);
   const christmas = campaigns.natal;
@@ -205,6 +215,7 @@ export function CheckoutPage() {
     giftMessage: '',
     paymentMethod: DEFAULT_PAYMENT,
     paymentPhone: '',
+    paymentProof: null,
   }));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
@@ -265,9 +276,26 @@ export function CheckoutPage() {
     'aria-describedby': describedBy(name, help),
   });
 
+  // O comprovativo é verificado logo ao escolher (tipo e tamanho), sem esperar por "Confirmar encomenda".
+  const chooseProof = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    set('paymentProof', file);
+    const problem = file ? checkProofFile(file) : null;
+    setErrors((current) => ({ ...current, paymentProof: problem ?? undefined }));
+  };
+
+  const removeProof = () => {
+    set('paymentProof', null);
+    setErrors((current) => ({ ...current, paymentProof: undefined }));
+    if (proofInput.current) {
+      proofInput.current.value = '';
+      proofInput.current.focus();
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (mutation.isPending || detail.lines.length === 0) return;
+    if (mutation.isPending || sendingProof || detail.lines.length === 0) return;
 
     const found = validate(form, context);
     setErrors(found);
@@ -327,7 +355,24 @@ export function CheckoutPage() {
     try {
       const order = await mutation.mutateAsync(payload);
 
-      saveLocalOrder(order, {
+      // IBAN com comprovativo: envia-o já. A encomenda existe mesmo que o envio falhe; nesse caso a página
+      // da encomenda mostra o erro e deixa enviar outra vez.
+      let placed = order;
+      let proofError: string | null = null;
+      const proof = paymentMethod === 'IBAN' ? form.paymentProof : null;
+      if (proof) {
+        setSendingProof(true);
+        try {
+          const payment = await uploadPaymentProof(order.id, proof);
+          placed = { ...order, payment: { ...order.payment, ...payment } };
+        } catch (error) {
+          proofError = getApiErrorMessage(error, 'Não foi possível enviar o comprovativo.');
+        } finally {
+          setSendingProof(false);
+        }
+      }
+
+      saveLocalOrder(placed, {
         deliveryType: delivery,
         pickupDate: home ? undefined : form.pickupDate,
         deliveryAddress: deliveryAddress ?? undefined,
@@ -345,7 +390,7 @@ export function CheckoutPage() {
       });
       // O stock mudou: o catálogo volta a ser pedido à API.
       void queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEY });
-      navigate(`/encomenda/${order.id}`, { state: { placed: true } });
+      navigate(`/encomenda/${order.id}`, { state: { placed: true, proofError } });
       clear();
     } catch (error) {
       setSubmitErrors(getApiErrorMessages(error, 'Não foi possível registar a encomenda. Tente novamente.'));
@@ -718,11 +763,52 @@ export function CheckoutPage() {
                 </p>
               )}
               {paymentMethod === 'IBAN' && (
+                <div className="s7-passo__sub">
+                  {options.bankTransfer ? (
+                    <div className="s7-transferencia-dados">
+                      <p className="s7-transferencia-dados__titulo">Dados para a transferência</p>
+                      <BankTransferList bank={options.bankTransfer} amount={total} />
+                    </div>
+                  ) : (
+                    <p className="s7-passo__info">
+                      <Icon name="recibo" />
+                      <span>Enviamos os dados para a transferência no e-mail de confirmação da encomenda.</span>
+                    </p>
+                  )}
+                  <div className="s7-campos">
+                    <Field
+                      name="paymentProof"
+                      label={
+                        <>
+                          Comprovativo da transferência <small>(opcional)</small>
+                        </>
+                      }
+                      error={errors.paymentProof}
+                      help={PROOF_HELP}
+                      wide
+                    >
+                      <input
+                        {...inputProps('paymentProof', true)}
+                        ref={proofInput}
+                        type="file"
+                        accept={PROOF_ACCEPT}
+                        onChange={chooseProof}
+                      />
+                      {form.paymentProof && (
+                        <button type="button" className="s7-ligacao s7-comprovativo__remover" onClick={removeProof}>
+                          Remover ficheiro
+                        </button>
+                      )}
+                    </Field>
+                  </div>
+                </div>
+              )}
+              {paymentMethod === 'IBAN' && (
                 <p className="s7-passo__info s7-passo__info--depois">
                   <Icon name="recibo" />
                   <span>
-                    Depois de confirmar a encomenda, mostramos o IBAN para a transferência e pode enviar o
-                    comprovativo (PDF ou imagem). A loja confirma o pagamento depois de o verificar.
+                    Ainda não transferiu? Confirme a encomenda e envie o comprovativo depois, na página da encomenda.
+                    A loja confirma o pagamento depois de verificar a transferência.
                   </span>
                 </p>
               )}
@@ -770,9 +856,13 @@ export function CheckoutPage() {
             <button
               className="s7-btn s7-btn--primario s7-btn--grande s7-btn--bloco"
               type="submit"
-              disabled={mutation.isPending || !paymentMethod}
+              disabled={mutation.isPending || sendingProof || !paymentMethod}
             >
-              {mutation.isPending ? 'A registar a encomenda…' : 'Confirmar encomenda'}
+              {sendingProof
+                ? 'A enviar o comprovativo…'
+                : mutation.isPending
+                  ? 'A registar a encomenda…'
+                  : 'Confirmar encomenda'}
             </button>
             {submitErrors.length > 0 && (
               <div className="s7-alerta" role="alert">

@@ -1,5 +1,5 @@
 import type { DeliveryType, PaymentMethod } from '../config/store';
-import type { ApiOrder, DeliveryAddress, OrderGift } from '../types/api';
+import type { ApiOrder, DeliveryAddress, OrderGift, OrderPayment } from '../types/api';
 
 /**
  * Encomendas feitas neste browser. `GET /order/{id}` é só para a equipa, por isso a
@@ -47,6 +47,35 @@ export function saveLocalOrder(order: ApiOrder, extras: LocalOrderExtras): void 
   } catch {
     // Sem armazenamento (modo privado): a confirmação continua a chegar por email.
   }
+}
+
+/**
+ * Junta à cópia local o pagamento devolvido pela API (ex.: depois de enviar o comprovativo do IBAN), para a página
+ * da encomenda o mostrar mesmo sem o seguimento público. Devolve a cópia actualizada, ou null se não existir.
+ */
+export function updateLocalOrderPayment(
+  id: string,
+  payment: OrderPayment,
+  extras: Partial<LocalOrderExtras> = {},
+): LocalOrder | null {
+  const target = id.trim().toLowerCase();
+  const all = readAll();
+  const index = all.findIndex((entry) => entry.order.id.toLowerCase() === target);
+  if (index < 0) return null;
+  const saved = all[index];
+  const updated: LocalOrder = {
+    ...saved,
+    order: { ...saved.order, payment: { ...saved.order.payment, ...payment } },
+    extras: { ...saved.extras, ...extras },
+  };
+  all[index] = updated;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // Sem armazenamento: a página mostra o comprovativo até ser recarregada.
+  }
+  return updated;
 }
 
 export function getLocalOrder(id: string): LocalOrder | null {

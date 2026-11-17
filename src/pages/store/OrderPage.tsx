@@ -1,22 +1,25 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../../api/client';
 import { fetchOrder, fetchOrderTracking, getOrderTotal, shortOrderId, uploadPaymentProof } from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
-import { getLocalOrder, listLocalOrders, normaliseOrderId } from '../../catalog/localOrders';
+import { getLocalOrder, listLocalOrders, normaliseOrderId, updateLocalOrderPayment } from '../../catalog/localOrders';
 import { toOrderView, type OrderView } from '../../catalog/orderView';
 import { useCheckoutOptions } from '../../catalog/useStoreSettings';
+import { checkProofFile, PROOF_ACCEPT, PROOF_HELP } from '../../catalog/paymentProof';
+import { BankTransferList } from '../../components/store/BankTransfer';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
+import { ExpressCountdown, ExpressRetryForm, IbanSwitchButton } from '../../components/store/PaymentAttempt';
 import { ProductImage } from '../../components/store/ProductBits';
 import { hasApiFeature, PAYMENT_METHOD_LABELS } from '../../config/store';
 import { ORDER_STATUS } from '../../constants/orderStatus';
 import { useAuth } from '../../context/auth';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { usePickupPosts } from '../../hooks/usePickupPosts';
-import type { ApiOrder, OrderCustomer } from '../../types/api';
+import type { ApiOrder, OrderCustomer, OrderPayment } from '../../types/api';
 import { formatDate, formatKz, formatPhone } from '../../utils/format';
 
 type StepKey = 'received' | 'awaiting' | 'paid' | 'preparing' | 'ready';
@@ -221,6 +224,28 @@ function awaitingExpressPayment(order: ApiOrder | undefined): boolean {
   return Number.isNaN(end) || Date.now() < end + EXPRESS_POLL_GRACE_MS;
 }
 
+/** A encomenda ainda está reservada (`holdUntil`, definido pela API): o cliente pode pedir outro pagamento. */
+function withinHold(order: ApiOrder | undefined): boolean {
+  const holdUntil = order?.payment?.holdUntil;
+  if (!order || !holdUntil || order.status === ORDER_STATUS.CANCELLED || order.payment?.status === 'PAID') return false;
+  const end = new Date(holdUntil).getTime();
+  return !Number.isNaN(end) && Date.now() < end;
+}
+
+/** Pedido Multicaixa Express recusado ou expirado, com a encomenda ainda reservada: o cliente tenta outra vez. */
+function canRetryPayment(order: ApiOrder | undefined): boolean {
+  const payment = order?.payment;
+  return Boolean(
+    payment && payment.method === 'MULTICAIXA_EXPRESS' && (payment.status === 'FAILED' || payment.status === 'EXPIRED') &&
+      withinHold(order),
+  );
+}
+
+/** "sábado, 18 de novembro, às 19:30". */
+function formatHold(iso: string): string {
+  return formatDate(iso, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+
 /** Segundos até `iso` (0 depois disso), actualizados a cada segundo; null sem data. */
 function useSecondsLeft(iso: string | null): number | null {
   const [now, setNow] = useState(() => Date.now());
@@ -233,10 +258,6 @@ function useSecondsLeft(iso: string | null): number | null {
   if (!iso) return null;
   const end = new Date(iso).getTime();
   return Number.isNaN(end) ? null : Math.max(0, Math.ceil((end - now) / 1000));
-}
-
-function formatCountdown(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 function OrderSummary({ view }: { view: OrderView }) {
@@ -336,10 +357,7 @@ function ExpressPaymentWait({ view }: { view: OrderView }) {
                 : 'Ainda não recebemos a confirmação. Esta página actualiza-se sozinha.'}
             </p>
             {secondsLeft !== null && !overdue && payment.expiresAt && (
-              <p className="s7-espera__prazo">
-                Tem <strong>{formatCountdown(secondsLeft)}</strong> para confirmar (até às{' '}
-                {formatDate(payment.expiresAt, { hour: '2-digit', minute: '2-digit' })}).
-              </p>
+              <ExpressCountdown secondsLeft={secondsLeft} expiresAt={payment.expiresAt} />
             )}
             <ol className="s7-espera__passos">
               <li>Abra a aplicação Multicaixa Express{phone ? ` do número ${phone}` : ''}.</li>
@@ -352,8 +370,9 @@ function ExpressPaymentWait({ view }: { view: OrderView }) {
             <p className="s7-bloco__nota">
               <Icon name="relogio" />
               <span>
-                Se o pagamento não for aceite dentro do prazo, a encomenda é cancelada e os artigos voltam a ficar
-                disponíveis.
+                {payment.holdUntil
+                  ? `Se não aceitar a tempo, pode pedir outra vez o pagamento ou pagar por transferência bancária. A encomenda fica reservada até ${formatHold(payment.holdUntil)}.`
+                  : 'Se o pagamento não for aceite dentro do prazo, a encomenda é cancelada e os artigos voltam a ficar disponíveis.'}
               </span>
             </p>
           </section>
@@ -364,30 +383,107 @@ function ExpressPaymentWait({ view }: { view: OrderView }) {
   );
 }
 
-const PROOF_MAX_MB = 10;
-const PROOF_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+/**
+ * Pedido Multicaixa Express recusado ou expirado, com a encomenda ainda reservada: o cliente pede outro pagamento
+ * (mesmo ou outro telemóvel) ou muda para transferência bancária. Vale o primeiro pagamento confirmado; quando a
+ * reserva termina sem pagamento, a API cancela a encomenda.
+ */
+function PaymentRetry({ view, onRetried }: { view: OrderView; onRetried: (order: ApiOrder, phone?: string) => void }) {
+  useDocumentTitle('Pagamento não concluído');
+  const { options } = useCheckoutOptions();
+  const { payment } = view;
+  const amount = payment.amount ?? view.total;
+  const expired = payment.status === 'EXPIRED';
+  const ibanAvailable = options.paymentMethods.includes('IBAN');
+
+  return (
+    <>
+      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
+        <CheckoutSteps current={3} />
+      </div>
+
+      <header className="s7-confirmacao s7-confirmacao--aviso">
+        <span className="s7-confirmacao__ico">
+          <Icon name="alerta" />
+        </span>
+        <div>
+          <h1>{expired ? 'O tempo para aceitar terminou' : 'O pagamento não foi concluído'}</h1>
+          <p>
+            {expired
+              ? 'O pedido de pagamento no Multicaixa Express não foi aceite a tempo.'
+              : 'O pedido de pagamento no Multicaixa Express foi recusado ou não foi possível concluí-lo.'}{' '}
+            {payment.holdUntil && <>A encomenda continua reservada até {formatHold(payment.holdUntil)}.</>}
+          </p>
+        </div>
+        {view.compraRef && (
+          <p className="s7-confirmacao__ref">
+            <span>Referência da compra</span>
+            <b>{view.compraRef}</b>
+          </p>
+        )}
+      </header>
+
+      <div className="s7-encomenda">
+        <div className="s7-encomenda__col">
+          <section className="s7-bloco s7-espera" aria-labelledby="s7-repetir-titulo">
+            <h2 id="s7-repetir-titulo">Tentar outra vez com Multicaixa Express</h2>
+            <p>Enviamos um novo pedido de pagamento de {formatKz(amount)} para o telemóvel que indicar.</p>
+            <ExpressRetryForm
+              orderId={view.id}
+              initialPhone={payment.phone}
+              submitLabel="Enviar novo pedido de pagamento"
+              onDone={onRetried}
+            />
+          </section>
+
+          {ibanAvailable && (
+            <section className="s7-bloco s7-espera" aria-labelledby="s7-mudar-iban-titulo">
+              <h2 id="s7-mudar-iban-titulo">Ou pague por transferência bancária</h2>
+              <p>Mostramos o IBAN da loja e envia o comprovativo (PDF ou imagem) nesta página.</p>
+              <IbanSwitchButton orderId={view.id} onDone={onRetried} />
+            </section>
+          )}
+        </div>
+        <OrderSummary view={view} />
+      </div>
+    </>
+  );
+}
 
 /**
  * Passo "Aguarda pagamento" da transferência bancária: os dados do IBAN (definições da loja, em
  * GET /checkout/options) e o envio do comprovativo (PDF ou imagem). A loja confirma o pagamento no back-office;
  * o OrderLoader volta a pedir a encomenda a cada IBAN_POLL_MS.
  */
-function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: () => void }) {
+interface IbanPaymentWaitProps {
+  view: OrderView;
+  onUploaded: (payment: OrderPayment) => void;
+  /** Com a encomenda reservada e o seguimento da API: o cliente pode antes pagar por Multicaixa Express. */
+  onRetried?: (order: ApiOrder, phone?: string) => void;
+}
+
+function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) {
   useDocumentTitle('Aguarda pagamento');
+  const { state } = useLocation();
   const { options } = useCheckoutOptions();
   const bank = options.bankTransfer;
   const { payment } = view;
   const amount = payment.amount ?? view.total;
   const sent = payment.proofUploadedAt;
   const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Comprovativo escolhido no checkout que não chegou a ser enviado: a encomenda existe, falta só o ficheiro.
+  const [error, setError] = useState<string | null>(() => {
+    const failed = (state as { proofError?: string | null } | null)?.proofError;
+    if (!failed || sent) return null;
+    const reason = /[.!?]$/.test(failed) ? failed : `${failed}.`;
+    return `A encomenda ficou registada, mas o comprovativo não foi enviado: ${reason} Escolha-o outra vez e envie.`;
+  });
   const upload = useMutation({
     mutationFn: (proof: File) => uploadPaymentProof(view.id, proof),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setFile(null);
       setError(null);
-      onUploaded();
+      onUploaded(result);
     },
     onError: (failure) => setError(getApiErrorMessage(failure, 'Não foi possível enviar o comprovativo. Tente novamente.')),
   });
@@ -397,12 +493,9 @@ function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: ()
     setError(null);
     setFile(null);
     if (!chosen) return;
-    if (!PROOF_TYPES.includes(chosen.type) && !/\.(pdf|jpe?g|png|webp)$/i.test(chosen.name)) {
-      setError('Escolha um PDF ou uma imagem (JPG, PNG ou WebP).');
-      return;
-    }
-    if (chosen.size > PROOF_MAX_MB * 1024 * 1024) {
-      setError(`O ficheiro tem mais de ${PROOF_MAX_MB} MB. Envie uma versão mais pequena.`);
+    const problem = checkProofFile(chosen);
+    if (problem) {
+      setError(problem);
       return;
     }
     setFile(chosen);
@@ -415,16 +508,6 @@ function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: ()
       return;
     }
     upload.mutate(file);
-  };
-
-  const copyIban = async () => {
-    if (!bank) return;
-    try {
-      await navigator.clipboard.writeText(bank.iban.replace(/\s/g, ''));
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
   };
 
   return (
@@ -458,31 +541,7 @@ function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: ()
           <section className="s7-bloco" aria-labelledby="s7-iban-titulo">
             <h2 id="s7-iban-titulo">Dados para a transferência</h2>
             {bank ? (
-              <dl className="s7-referencia">
-                <dt>Montante</dt>
-                <dd>{formatKz(amount)}</dd>
-                <dt>IBAN</dt>
-                <dd className="s7-iban">
-                  <span>{bank.iban}</span>
-                  <button type="button" className="s7-ligacao" onClick={copyIban}>
-                    {copied ? 'Copiado' : 'Copiar'}
-                  </button>
-                </dd>
-                <dt>Titular</dt>
-                <dd>{bank.holder}</dd>
-                {bank.bank && (
-                  <>
-                    <dt>Banco</dt>
-                    <dd>{bank.bank}</dd>
-                  </>
-                )}
-                {view.compraRef && (
-                  <>
-                    <dt>Descrição</dt>
-                    <dd>{view.compraRef}</dd>
-                  </>
-                )}
-              </dl>
+              <BankTransferList bank={bank} amount={amount} reference={view.compraRef} />
             ) : (
               <p>Os dados para a transferência estão no e-mail de confirmação da encomenda.</p>
             )}
@@ -511,13 +570,13 @@ function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: ()
                 <input
                   id="s7-comprovativo"
                   type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  accept={PROOF_ACCEPT}
                   aria-describedby="s7-comprovativo-ajuda s7-comprovativo-erro"
                   aria-invalid={error ? true : undefined}
                   onChange={choose}
                 />
                 <p className="s7-campo__ajuda" id="s7-comprovativo-ajuda">
-                  PDF ou imagem (JPG, PNG ou WebP), até {PROOF_MAX_MB} MB. Uma fotografia nítida do talão também serve.
+                  {PROOF_HELP}
                 </p>
                 <p className="s7-campo__erro" id="s7-comprovativo-erro" role="alert">
                   {error}
@@ -532,6 +591,23 @@ function IbanPaymentWait({ view, onUploaded }: { view: OrderView; onUploaded: ()
               <span>A encomenda fica reservada enquanto a loja confirma o pagamento. Esta página actualiza-se sozinha.</span>
             </p>
           </section>
+
+          {onRetried && options.paymentMethods.includes('MULTICAIXA_EXPRESS') && (
+            <section className="s7-bloco s7-espera" aria-labelledby="s7-mudar-express-titulo">
+              <h2 id="s7-mudar-express-titulo">Prefere pagar com Multicaixa Express?</h2>
+              <p>
+                {sent
+                  ? 'Já enviou o comprovativo: só pague por Multicaixa Express se ainda não fez a transferência. Vale o primeiro pagamento confirmado.'
+                  : 'Enviamos um pedido de pagamento para o seu telemóvel; aceita-o na aplicação em 2 minutos.'}
+              </p>
+              <ExpressRetryForm
+                orderId={view.id}
+                initialPhone={payment.phone}
+                submitLabel="Pagar com Multicaixa Express"
+                onDone={onRetried}
+              />
+            </section>
+          )}
         </div>
         <OrderSummary view={view} />
       </div>
@@ -679,21 +755,38 @@ function OrderLoader({ id }: { id: string }) {
   const { can } = useAuth();
   const staff = can('viewOrders');
   const tracking = hasApiFeature('order-tracking');
-  const [local] = useState(() => getLocalOrder(id));
+  const [local, setLocal] = useState(() => getLocalOrder(id));
+  const queryClient = useQueryClient();
+  const queryKey = ['order', id, staff ? 'equipa' : 'seguimento'];
 
   // A equipa vê a encomenda completa; o cliente usa o seguimento público quando existir
   // (`api_features=order-tracking`) e, até lá, a cópia guardada no checkout.
   const remote = useQuery({
-    queryKey: ['order', id, staff ? 'equipa' : 'seguimento'],
+    queryKey,
     queryFn: () => (staff ? fetchOrder(id) : fetchOrderTracking(id)),
     enabled: staff || tracking,
     retry: false,
-    // Multicaixa Express: volta a perguntar até o pagamento ser confirmado, falhar ou expirar.
+    // Multicaixa Express: volta a perguntar até o pagamento ser confirmado, falhar ou expirar. Com IBAN ou à espera
+    // de uma nova tentativa, de 30 em 30 segundos (um pagamento atrasado ainda pode chegar).
     refetchInterval: (query) => {
       if (awaitingExpressPayment(query.state.data)) return EXPRESS_POLL_MS;
-      return awaitingIbanPayment(query.state.data) ? IBAN_POLL_MS : false;
+      return awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data) ? IBAN_POLL_MS : false;
     },
   });
+
+  // Novo pedido de pagamento (Express outra vez ou IBAN): a resposta já traz o pagamento actualizado. O seguimento não
+  // devolve o telemóvel, por isso o do novo pedido Express fica na cópia local.
+  const onRetried = (updated: ApiOrder, phone?: string) => {
+    const payment = updated.payment && phone ? { ...updated.payment, phone } : updated.payment;
+    queryClient.setQueryData(queryKey, { ...updated, payment });
+    if (payment) {
+      const saved = updateLocalOrderPayment(id, payment, {
+        paymentMethod: payment.method,
+        ...(phone ? { paymentPhone: phone } : {}),
+      });
+      if (saved) setLocal(saved);
+    }
+  };
 
   const order = remote.data ?? local?.order ?? null;
   const loading = (staff || tracking) && remote.isLoading;
@@ -719,9 +812,25 @@ function OrderLoader({ id }: { id: string }) {
   if (!staff && remote.data && awaitingExpressPayment(remote.data)) {
     return <ExpressPaymentWait view={view} />;
   }
+  // Pedido Express recusado ou expirado com a encomenda reservada: repetir ou mudar para IBAN.
+  if (!staff && remote.data && canRetryPayment(remote.data)) {
+    return <PaymentRetry view={view} onRetried={onRetried} />;
+  }
   // IBAN: mesmo sem o seguimento da API (cópia local), o cliente tem de poder enviar o comprovativo.
   if (!staff && awaitingIbanPayment(remote.data ?? local?.order)) {
-    return <IbanPaymentWait view={view} onUploaded={() => void remote.refetch()} />;
+    // Depois do envio, a cópia local passa a ter o comprovativo (sem o seguimento da API, é a única fonte).
+    const onUploaded = (payment: OrderPayment) => {
+      const updated = updateLocalOrderPayment(id, payment);
+      if (updated) setLocal(updated);
+      if (staff || tracking) void remote.refetch();
+    };
+    return (
+      <IbanPaymentWait
+        view={view}
+        onUploaded={onUploaded}
+        onRetried={remote.data && withinHold(remote.data) ? onRetried : undefined}
+      />
+    );
   }
   return <OrderDetails view={view} fromDevice={!remote.data} />;
 }

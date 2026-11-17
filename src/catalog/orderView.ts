@@ -13,6 +13,8 @@ export interface OrderPaymentView {
   /** IBAN: comprovativo enviado (nome e data); null enquanto não houver. */
   proofFileName: string | null;
   proofUploadedAt: string | null;
+  /** Fim da reserva: até lá o cliente pode pedir outro pagamento. null sem novas tentativas. */
+  holdUntil: string | null;
   /** `false` enquanto a API não gere pagamentos: o método vem do que o cliente escolheu. */
   fromApi: boolean;
 }
@@ -64,6 +66,7 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
         expiresAt: order.payment.expiresAt ?? null,
         proofFileName: order.payment.proofFileName ?? null,
         proofUploadedAt: order.payment.proofUploadedAt ?? null,
+        holdUntil: order.payment.holdUntil ?? null,
         fromApi: true,
       }
     : {
@@ -76,6 +79,7 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
         expiresAt: null,
         proofFileName: null,
         proofUploadedAt: null,
+        holdUntil: null,
         fromApi: false,
       };
 

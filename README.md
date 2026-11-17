@@ -63,7 +63,8 @@ src/
     ├── css/super7.css       # Folha de estilos do layout (não editar à mão: vem do design)
     ├── css/super7-app.css   # Complementos da aplicação (carregamento, estados, ajustes)
     ├── css/super7-ajustes.css # Responsividade (320 px a ecrãs largos) e movimento; carregado por último
-    ├── fonts/, img/         # Montserrat e Figtree alojadas no projecto; cestas e fotografias das lojas
+    ├── fonts/, img/         # Montserrat e Figtree alojadas no projecto; logótipos oficiais do Super7
+                             # (cor e branco), cestas e fotografias das lojas
 ```
 
 O back-office é carregado à parte (`React.lazy`): quem visita a loja não descarrega esse código.
@@ -130,8 +131,20 @@ As imagens das cestas devem ter fundo transparente, como as de `src/assets/img/`
 ## Checkout e encomendas
 
 O checkout não precisa de conta e segue o layout: dados do cliente e NIF, levantamento numa loja (com data)
-ou entrega ao domicílio (com taxa), oferta com mensagem, e pagamento por Multicaixa Express, referência ou
-na loja (este só com levantamento).
+ou entrega ao domicílio (com taxa), oferta com mensagem, e pagamento por Multicaixa Express ou transferência
+bancária (IBAN), conforme as Definições da loja no back-office.
+
+Ao escolher a transferência, o checkout mostra logo o montante, o IBAN, o destinatário e o banco (Definições da
+loja, via `GET /checkout/options`) e aceita o comprovativo em PDF ou imagem (JPG, PNG, WebP, até 10 MB). O
+comprovativo é opcional no checkout: segue para `POST /order/{id}/payment-proof` assim que a encomenda é criada e,
+se ainda não houver, o cliente envia-o depois na página da encomenda.
+
+Com Multicaixa Express, a página da encomenda mostra um ponteiro com os 2 minutos para aceitar o pagamento no
+telemóvel (fica vermelho nos últimos 30 segundos). Se o pedido expirar ou for recusado, a encomenda continua
+reservada (24 horas, `app.payment.hold-hours` na API) e o cliente pede outro pagamento, para o mesmo ou outro
+telemóvel, ou muda para transferência bancária; com IBAN também pode passar a Express. Vale o primeiro pagamento
+confirmado (`POST /order/{id}/payment`). Acabada a reserva sem pagamento, a API cancela a encomenda e devolve o
+stock. Precisa de `order-tracking` e `checkout-options` em `api_features`.
 
 Enquanto a API não guardar estes dados, seguem também nas observações da encomenda (`notes`, até 500
 caracteres), uma informação por linha, para a loja os ver no back-office. **Até o backend tratar dos pagamentos

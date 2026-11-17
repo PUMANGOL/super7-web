@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { getApiErrorMessage } from '../api/client';
+import logoSuper7 from '../assets/img/logo-super7.webp';
 import { useAuth } from '../context/auth';
 import { useToast } from '../context/toast';
 import { canAccessBackoffice } from '../utils/auth';
@@ -72,7 +73,7 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-brand">
-          <img src="/logo-pumangol.svg" alt="Pumangol" />
+          <img src={logoSuper7} alt="Super7" width={446} height={160} />
           <h1>Área reservada</h1>
           <p>Back-office da loja Super7 Digital, para as equipas Pumangol.</p>
         </div>

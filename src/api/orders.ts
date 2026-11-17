@@ -1,6 +1,6 @@
 import { apiClient, unwrap } from './client';
 import type { PaymentStatus } from '../config/store';
-import type { ApiOrder, ApiResponse, OrderPayment, OrderRequest, Page } from '../types/api';
+import type { ApiOrder, ApiResponse, OrderPayment, OrderRequest, Page, PaymentRetryRequest } from '../types/api';
 
 /** Checkout público: responde 201 com a encomenda em estado `Pendente`. */
 export async function createOrder(payload: OrderRequest): Promise<ApiOrder> {
@@ -50,6 +50,15 @@ export async function uploadPaymentProof(id: string, file: File): Promise<OrderP
   const form = new FormData();
   form.append('file', file);
   const { data } = await apiClient.post<ApiResponse<OrderPayment>>(`/order/${id}/payment-proof`, form);
+  return unwrap(data);
+}
+
+/**
+ * Cliente, sem sessão: pede outro pagamento enquanto a encomenda está reservada e por pagar — novo pedido Multicaixa
+ * Express (2 minutos para aceitar) ou mudança para IBAN. Devolve a encomenda como o seguimento (dados limitados).
+ */
+export async function retryPayment(id: string, request: PaymentRetryRequest): Promise<ApiOrder> {
+  const { data } = await apiClient.post<ApiResponse<ApiOrder>>(`/order/${id}/payment`, request);
   return unwrap(data);
 }
 
