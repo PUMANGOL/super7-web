@@ -33,3 +33,16 @@ export function can(user: AuthUser | null | undefined, permission: Permission): 
 export function canAccessBackoffice(user: AuthUser | null | undefined): boolean {
   return hasRole(user, ...TEAM_ROLES);
 }
+
+/** Nome do perfil para mostrar (o mais alto, se a pessoa tiver vários). */
+const ROLE_LABELS: [RoleName, string][] = [
+  ['ADMIN', 'Administrador'],
+  ['MANAGER', 'Gestor'],
+  ['FINANCE', 'Finanças'],
+  ['SUPPORT', 'Apoio ao cliente'],
+  ['AUDITOR', 'Auditor'],
+];
+
+export function roleLabel(user: AuthUser | null | undefined): string {
+  return ROLE_LABELS.find(([role]) => hasRole(user, role))?.[1] ?? 'Equipa';
+}

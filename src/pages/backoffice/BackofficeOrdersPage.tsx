@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download, Filter, Search } from 'lucide-react';
 import { getApiErrorMessage } from '../../api/client';
 import { getOrderTotal, getOrderUnits, shortOrderId } from '../../api/orders';
@@ -43,7 +44,19 @@ export function BackofficeOrdersPage() {
   const { can } = useAuth();
   const { showToast } = useToast();
   const canChangeStatus = can('changeOrderStatus');
-  const [search, setSearch] = useState('');
+  // A pesquisa vive no endereço (?q=): a caixa "Procurar encomenda" da barra do topo abre esta página já filtrada.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('q') ?? '';
+  const setSearch = (value: string) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value) next.set('q', value);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
   const [storeFilter, setStoreFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');

@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronUp, LogOut, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, Palette, Store } from 'lucide-react';
 import { useAuth } from '../../context/auth';
-import { useToast } from '../../context/toast';
+import { roleLabel } from '../../utils/auth';
+import { initials } from '../../utils/format';
+import { useBackofficeLogout } from './useBackofficeLogout';
 import './BackofficeUserMenu.css';
 
-interface BackofficeUserMenuProps {
-  collapsed?: boolean;
-}
-
-export function BackofficeUserMenu({ collapsed = false }: BackofficeUserMenuProps) {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const { showToast } = useToast();
+/** Utilizador na barra do topo: iniciais, nome e perfil; abre o menu com a loja, a aparência e a saída. */
+export function BackofficeUserMenu() {
+  const { user, can } = useAuth();
+  const logout = useBackofficeLogout();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -20,18 +18,14 @@ export function BackofficeUserMenu({ collapsed = false }: BackofficeUserMenuProp
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setIsOpen(false);
     };
-
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsOpen(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
@@ -40,72 +34,62 @@ export function BackofficeUserMenu({ collapsed = false }: BackofficeUserMenuProp
 
   if (!user) return null;
 
-  // Volta ao login (e não à loja): num computador partilhado, a pessoa seguinte entra logo.
-  // `replace` impede que o botão "Retroceder" reabra a página do back-office.
-  const handleLogout = () => {
-    setIsOpen(false);
-    logout();
-    showToast('Sessão terminada.');
-    navigate('/login', { replace: true });
-  };
+  const role = roleLabel(user);
+  const close = () => setIsOpen(false);
 
   return (
-    <>
-      <div className="backoffice-user-menu" ref={menuRef}>
-        {isOpen && (
-          <div className="backoffice-user-dropdown" role="menu">
-            <div className="backoffice-user-dropdown-info">
-              <strong>{user.name}</strong>
-              <span>{user.email}</span>
-            </div>
-            <div className="backoffice-user-dropdown-divider" role="separator" />
-            <Link
-              to="/"
-              className="backoffice-user-dropdown-item"
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-            >
-              Ir para a loja
-            </Link>
-          </div>
-        )}
-
-        <button
-          type="button"
-          className={`backoffice-user-trigger${isOpen ? ' backoffice-user-trigger--active' : ''}`}
-          onClick={() => setIsOpen((open) => !open)}
-          aria-expanded={isOpen}
-          aria-haspopup="menu"
-          title={collapsed ? user.name : undefined}
-        >
-          <span className="backoffice-user-trigger-icon" aria-hidden="true">
-            <User size={18} />
-          </span>
-          {!collapsed && (
-            <>
-              <span className="backoffice-user-trigger-text">
-                <strong>{user.name}</strong>
-                <span>{user.email}</span>
-              </span>
-              <ChevronUp
-                size={16}
-                className={`backoffice-user-trigger-chevron${isOpen ? ' backoffice-user-trigger-chevron--open' : ''}`}
-                aria-hidden="true"
-              />
-            </>
-          )}
-        </button>
-      </div>
-
+    <div className="bo-utilizador" ref={menuRef}>
       <button
         type="button"
-        className="backoffice-sidebar-link backoffice-sidebar-logout"
-        onClick={handleLogout}
-        title={collapsed ? 'Terminar sessão' : undefined}
+        className="bo-utilizador__botao"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-label={`${user.name}, ${role}: abrir o menu da conta`}
       >
-        <LogOut size={18} aria-hidden="true" />
-        <span className="backoffice-sidebar-link-label">Terminar sessão</span>
+        <span className="bo-avatar" aria-hidden="true">
+          {initials(user.name) || '?'}
+        </span>
+        <span className="bo-utilizador__texto" aria-hidden="true">
+          <strong>{user.name}</strong>
+          <span>
+            {role} · {user.email}
+          </span>
+        </span>
       </button>
-    </>
+
+      {isOpen && (
+        <div className="bo-utilizador__menu" role="menu">
+          <div className="bo-utilizador__info">
+            <strong>{user.name}</strong>
+            <span>{user.email}</span>
+            <span className="bo-utilizador__perfil">{role}</span>
+          </div>
+          <Link to="/" className="bo-utilizador__opcao" role="menuitem" onClick={close}>
+            <Store size={17} aria-hidden="true" />
+            Abrir a loja
+          </Link>
+          {can('manageSettings') && (
+            <Link to="/backoffice/aparencia" className="bo-utilizador__opcao" role="menuitem" onClick={close}>
+              <Palette size={17} aria-hidden="true" />
+              Aparência do back-office
+            </Link>
+          )}
+          <div className="bo-utilizador__divisor" role="separator" />
+          <button
+            type="button"
+            className="bo-utilizador__opcao"
+            role="menuitem"
+            onClick={() => {
+              close();
+              logout();
+            }}
+          >
+            <LogOut size={17} aria-hidden="true" />
+            Terminar sessão
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

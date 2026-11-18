@@ -1,172 +1,156 @@
-.backoffice-user-menu {
+/* Utilizador na barra do topo (iniciais, nome, perfil) e o menu da conta. */
+.bo-utilizador {
   position: relative;
+  min-width: 0;
 }
 
-.backoffice-user-trigger {
+.bo-utilizador__botao {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  cursor: pointer;
+  gap: 12px;
+  max-width: 360px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 999px;
+  color: var(--bo-on-primary);
+  text-align: left;
   transition: background-color 0.2s;
 }
 
-.backoffice-user-trigger:hover,
-.backoffice-user-trigger--active {
-  background: var(--brand-primary-light);
+.bo-utilizador__botao:hover,
+.bo-utilizador__botao[aria-expanded='true'] {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.backoffice-user-trigger-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 999px;
-  background: var(--gray-100);
-  color: var(--gray-700);
-  flex-shrink: 0;
-}
-
-.backoffice-user-trigger--active .backoffice-user-trigger-icon,
-.backoffice-user-trigger:hover .backoffice-user-trigger-icon {
-  background: var(--white);
-  color: var(--brand-primary);
-}
-
-.backoffice-user-trigger-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-  flex: 1;
-  text-align: left;
-}
-
-.backoffice-user-trigger-text strong {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.backoffice-user-trigger-text span {
-  font-size: 0.6875rem;
-  color: var(--gray-500);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.backoffice-user-trigger-chevron {
-  color: var(--gray-400);
-  flex-shrink: 0;
-  transition: transform 0.2s;
-}
-
-.backoffice-user-trigger-chevron--open {
-  transform: rotate(180deg);
-}
-
-.backoffice-user-dropdown {
-  position: absolute;
-  bottom: calc(100% + 0.25rem);
-  left: -1rem;
-  right: -1rem;
-  background: var(--white);
-  border: none;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  padding: 0.75rem 1rem;
-  z-index: 110;
-}
-
-.backoffice-user-dropdown-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.25rem 0.375rem;
-}
-
-.backoffice-user-dropdown-info strong {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  line-height: 1.3;
-}
-
-.backoffice-user-dropdown-info span {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  word-break: break-word;
-}
-
-.backoffice-user-dropdown-divider {
-  height: 1px;
-  margin: 0.625rem 0;
-  background: var(--gray-200);
-}
-
-.backoffice-user-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--gray-800);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
-}
-
-.backoffice-user-dropdown-item:hover {
-  background: var(--brand-primary-light);
-  color: var(--brand-primary);
-}
-
-/* Terminar sessão: sempre à vista no fundo do menu lateral. Usa .backoffice-sidebar-link
-   (encolhe para só o ícone com o menu) e o vermelho que a acção já tinha no dropdown.
-   Os seletores duplos ganham ao .backoffice-sidebar-link, que é carregado depois. */
-.backoffice-sidebar-link.backoffice-sidebar-logout {
-  width: 100%;
-  margin-top: 0.25rem;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  color: #dc2626;
-  cursor: pointer;
-}
-
-.backoffice-sidebar-link.backoffice-sidebar-logout:hover {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.backoffice-sidebar-link.backoffice-sidebar-logout:focus-visible {
-  outline: 2px solid #dc2626;
+.bo-utilizador__botao:focus-visible {
+  outline: 2px solid var(--bo-accent);
   outline-offset: 2px;
 }
 
-/* Telemóvel: o menu lateral fica no topo; o botão segue ao lado do utilizador. */
-@media (max-width: 768px) {
-  .backoffice-sidebar-footer .backoffice-user-menu {
-    flex: 1;
-    min-width: 0;
-  }
+.bo-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bo-avatar);
+  color: var(--bo-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 
-  .backoffice-sidebar-link.backoffice-sidebar-logout {
-    width: auto;
-    margin-top: 0;
+.bo-utilizador__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.bo-utilizador__texto strong {
+  overflow: hidden;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bo-utilizador__texto span {
+  overflow: hidden;
+  font-size: 0.875rem;
+  color: var(--bo-on-primary-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bo-utilizador__menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 60;
+  width: 280px;
+  padding: 6px;
+  border: 1px solid var(--bo-linha);
+  border-radius: var(--bo-raio);
+  background: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.28);
+  animation: bo-utilizador-abrir 0.16s ease-out;
+}
+
+@keyframes bo-utilizador-abrir {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
   }
+}
+
+.bo-utilizador__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid var(--bo-linha);
+  margin-bottom: 6px;
+}
+
+.bo-utilizador__info strong {
+  font-size: 0.9375rem;
+  color: var(--bo-ink);
+}
+
+.bo-utilizador__info span {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  color: #64748b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bo-utilizador__info .bo-utilizador__perfil {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--bo-primary-soft);
+  color: var(--bo-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bo-utilizador__opcao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #334155;
+  text-align: left;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.bo-utilizador__opcao:hover,
+.bo-utilizador__opcao:focus-visible {
+  background: var(--bo-primary-soft);
+  color: var(--bo-primary);
+  outline: none;
+}
+
+.bo-utilizador__opcao svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.bo-utilizador__opcao:hover svg {
+  color: inherit;
+}
+
+.bo-utilizador__divisor {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--bo-linha);
 }

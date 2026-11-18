@@ -50,3 +50,22 @@ export function toLocalIsoDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
 }
+
+const NAME_PARTICLES = new Set(['da', 'das', 'de', 'do', 'dos', 'e']);
+
+function nameWords(name: string): string[] {
+  return name.trim().split(/\s+/).filter((word) => word && !NAME_PARTICLES.has(word.toLowerCase()));
+}
+
+/** "Joao Paulo dos Santos Zinga" → "Joao". */
+export function firstName(name: string | null | undefined): string {
+  return nameWords(name ?? '')[0] ?? '';
+}
+
+/** "Joao Paulo dos Santos Zinga" → "JP" (as duas primeiras palavras, como no People Connect). */
+export function initials(name: string | null | undefined): string {
+  return nameWords(name ?? '')
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join('');
+}

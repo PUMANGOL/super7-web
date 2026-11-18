@@ -127,8 +127,10 @@ export const STORE = {
      order-tracking     GET /order/{id}/tracking     estado da encomenda para o cliente, sem sessão
      order-fields       POST /order com os campos novos gravados: deixa de copiar
                         entrega, pagamento, NIF e oferta para as observações (`notes`)
+     backoffice-theme   GET/PUT /settings/theme      cores do back-office para toda a equipa; sem
+                        ela, as cores que o ADMIN escolhe ficam só no browser dele
 */
-export type ApiFeature = 'campaigns' | 'checkout-options' | 'order-tracking' | 'order-fields';
+export type ApiFeature = 'campaigns' | 'checkout-options' | 'order-tracking' | 'order-fields' | 'backoffice-theme';
 
 const ENABLED_FEATURES = new Set(
   String(import.meta.env.api_features ?? '')

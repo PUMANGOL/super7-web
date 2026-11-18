@@ -47,6 +47,9 @@ const BackofficeDashboardPage = lazy(() =>
 const BackofficeSettingsPage = lazy(() =>
   import('./pages/backoffice/BackofficeSettingsPage').then((module) => ({ default: module.BackofficeSettingsPage })),
 );
+const BackofficeAppearancePage = lazy(() =>
+  import('./pages/backoffice/BackofficeAppearancePage').then((module) => ({ default: module.BackofficeAppearancePage })),
+);
 
 function BackofficeLoading() {
   return (
@@ -149,6 +152,14 @@ function App() {
                   element={
                     <RequirePermission permission="viewSettings">
                       <BackofficeSettingsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="aparencia"
+                  element={
+                    <RequirePermission permission="manageSettings">
+                      <BackofficeAppearancePage />
                     </RequirePermission>
                   }
                 />

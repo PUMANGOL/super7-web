@@ -63,8 +63,8 @@ src/
     ├── css/super7.css       # Folha de estilos do layout (não editar à mão: vem do design)
     ├── css/super7-app.css   # Complementos da aplicação (carregamento, estados, ajustes)
     ├── css/super7-ajustes.css # Responsividade (320 px a ecrãs largos) e movimento; carregado por último
-    ├── fonts/, img/         # Montserrat e Figtree alojadas no projecto; logótipos oficiais do Super7
-                             # (cor e branco), cestas e fotografias das lojas
+    ├── fonts/, img/         # Montserrat e Figtree (loja) e Outfit (back-office) alojadas no projecto;
+                             # logótipos oficiais do Super7 (cor e branco), cestas e fotografias das lojas
 ```
 
 O back-office é carregado à parte (`React.lazy`): quem visita a loja não descarrega esse código.
@@ -97,7 +97,7 @@ endpoints em falta estão descritos para o backend em **[docs/api-campos-em-falt
 
 - Os campos novos já seguem nos pedidos (a API actual ignora-os) e são lidos das respostas assim que existirem.
 - Os endpoints novos activam-se na variável de ambiente `api_features`, à medida que o backend os publicar:
-  `campaigns`, `checkout-options`, `order-tracking`, `order-fields` (ver `src/config/store.ts`).
+  `campaigns`, `checkout-options`, `order-tracking`, `order-fields`, `backoffice-theme` (ver `src/config/store.ts`).
 - Até lá, as campanhas vêm de `CAMPAIGNS` e as opções do checkout (taxa e zonas de entrega, métodos de
   pagamento) de `DEFAULT_CHECKOUT_OPTIONS`, ambos em `src/config/store.ts`.
 
@@ -172,6 +172,19 @@ mostra o estado actual da API.
 | Encomendas (ver) | ADMIN, MANAGER, SUPPORT, FINANCE, AUDITOR |
 | Mudar o estado da encomenda | ADMIN, MANAGER, SUPPORT |
 | Produtos, livros, categorias, lojas de levantamento | ADMIN, MANAGER |
+| Definições da loja (ver) | ADMIN, MANAGER |
+| Definições da loja (alterar), Aparência | ADMIN |
+
+O layout segue a base do People Connect (`src/components/backoffice/BackofficeLayout.*`): fonte Outfit, barra
+verde no topo com a pesquisa de encomendas (abre `/backoffice/encomendas?q=`), menu lateral escuro com grupos
+(Geral, Catálogo, Loja), que encolhe para só ícones e no telemóvel sai de lado, e o Painel abre com a faixa
+"Bom dia". O menu encolhido e os grupos fechados ficam guardados no browser.
+
+Em **Aparência** (`/backoffice/aparencia`, só ADMIN) escolhem-se cinco cores: principal, destaque, menu lateral,
+faixa do Painel e fundo das páginas, ou um conjunto pronto. O back-office mostra-as logo, antes de gravar; os tons
+do texto e dos realces são calculados (`theme/theme.ts`), e o fundo escuro ou uma cor principal clara demais não se
+gravam. Com `backoffice-theme` em `api_features`, as cores vêm de `GET /settings/theme` e gravam-se com
+`PUT /settings/theme`, para toda a equipa; sem ela, ficam só no browser de quem as escolheu.
 
 O estado das encomendas segue o fluxo Pendente → Em Processamento → Pronto para Entrega → Entregue, com
 Cancelado possível antes de Entregue; cada mudança envia um e-mail ao cliente.
