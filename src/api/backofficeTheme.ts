@@ -7,8 +7,8 @@ export async function fetchBackofficeTheme(): Promise<BackofficeThemeColors> {
   return unwrap(data);
 }
 
-/** Só ADMIN. Substitui as cores todas: uma cor `null` volta à original. A API recusa um fundo escuro. */
-export async function updateBackofficeTheme(colors: BackofficeThemeColors): Promise<BackofficeThemeColors> {
-  const { data } = await apiClient.put<ApiResponse<BackofficeThemeColors>>('/settings/theme', colors);
+/** Só ADMIN. Substitui as cores todas: uma chave em falta volta à original. A API recusa um fundo escuro. */
+export async function updateBackofficeTheme(colors: Record<string, string>): Promise<BackofficeThemeColors> {
+  const { data } = await apiClient.put<ApiResponse<BackofficeThemeColors>>('/settings/theme', { colors });
   return unwrap(data);
 }

@@ -14,7 +14,13 @@ const STORAGE_KEY = 's7-backoffice-cores';
 function readStored(): BackofficeThemeColors | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as BackofficeThemeColors) : null;
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Partial<BackofficeThemeColors> & Record<string, unknown>;
+    if (saved.colors && typeof saved.colors === 'object') return saved as BackofficeThemeColors;
+    // Formato da primeira versão (cores soltas, com `sidebar`): resolveTheme converte as chaves antigas.
+    const { updatedAt, updatedBy, ...flat } = saved;
+    const colors = Object.fromEntries(Object.entries(flat).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+    return { colors, updatedAt: (updatedAt as string | null) ?? null, updatedBy: (updatedBy as string | null) ?? null };
   } catch {
     return null;
   }
@@ -51,7 +57,7 @@ export function BackofficeThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const colors = shared && remote.data ? remote.data : stored;
-  const theme = useMemo(() => resolveTheme(colors), [colors]);
+  const theme = useMemo(() => resolveTheme(colors?.colors), [colors]);
 
   useEffect(() => {
     if (shared && remote.data) writeStored(remote.data);
@@ -64,7 +70,7 @@ export function BackofficeThemeProvider({ children }: { children: ReactNode }) {
         await mutateAsync(chosen);
         return;
       }
-      const local: BackofficeThemeColors = { ...chosen, updatedAt: new Date().toISOString(), updatedBy: null };
+      const local: BackofficeThemeColors = { colors: chosen, updatedAt: new Date().toISOString(), updatedBy: null };
       writeStored(local);
       setStored(local);
     },

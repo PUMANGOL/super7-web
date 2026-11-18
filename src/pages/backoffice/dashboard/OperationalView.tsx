@@ -22,7 +22,7 @@ import {
 import { shortOrderId } from '../../../api/orders';
 import type { Product } from '../../../catalog/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../../config/store';
-import { orderStatusColors } from '../../../constants/orderStatus';
+import { StatusBadge as OrderStatusBadge } from '../orders/OrderBadges';
 import { formatPrice } from '../../../utils/helpers';
 import { countLabel, formatCount } from './format';
 import { useNow } from './hooks';
@@ -49,7 +49,7 @@ function OrderRow({ row, now, meta, agoPrefix }: OrderRowProps) {
 
   return (
     <li>
-      <Link to={ORDERS_PATH} className="dash-order" title={`Abrir Encomendas (referência ${reference})`}>
+      <Link to={`${ORDERS_PATH}/${order.id}`} className="dash-order" title={`Abrir a encomenda ${reference}`}>
         <span className="dash-order-ref">{reference}</span>
         <span className="dash-order-main">
           <span className="dash-order-name">{order.customer.fullName}</span>
@@ -129,7 +129,7 @@ function ExpressList({ rows }: { rows: OpsRow[] }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge ${orderStatusColors[status] ?? 'badge-gray'}`}>{status}</span>;
+  return <OrderStatusBadge status={status} />;
 }
 
 /** Estado da encomenda e do pagamento, para listas que misturam estados. */
@@ -322,8 +322,8 @@ export function OperationalView({
   return (
     <div className="dash-view">
       <p className="dash-filter-note dash-ops-intro">
-        Estado actual de todas as encomendas abertas e do stock, sem filtro de período. Clique numa linha para abrir
-        Encomendas.
+        Estado actual de todas as encomendas abertas e do stock, sem filtro de período. Clique numa linha para abrir a
+        encomenda.
       </p>
 
       <div className="dash-tiles">
@@ -345,7 +345,7 @@ export function OperationalView({
         id="painel-comprovativos"
         icon={FileCheck}
         title="IBAN com comprovativo por verificar"
-        subtitle="O cliente já enviou o comprovativo da transferência. Confirme a entrada no banco e marque o pagamento em Encomendas. Os mais antigos primeiro."
+        subtitle="O cliente já enviou o comprovativo da transferência. Abra a encomenda, confirme a entrada no banco e marque o pagamento. Os mais antigos primeiro."
         count={ops.ibanToVerify.length}
         alert={ops.ibanToVerify.length > 0}
       >

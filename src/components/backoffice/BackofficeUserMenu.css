@@ -7,9 +7,9 @@
 .bo-utilizador__botao {
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: 360px;
-  padding: 4px 8px 4px 4px;
+  gap: 10px;
+  max-width: 300px;
+  padding: 3px 8px 3px 3px;
   border-radius: 999px;
   color: var(--bo-on-primary);
   text-align: left;
@@ -31,12 +31,12 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--bo-avatar);
   color: var(--bo-primary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -50,7 +50,7 @@
 
 .bo-utilizador__texto strong {
   overflow: hidden;
-  font-size: 1.0625rem;
+  font-size: 0.875rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -58,7 +58,7 @@
 
 .bo-utilizador__texto span {
   overflow: hidden;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--bo-on-primary-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -66,10 +66,10 @@
 
 .bo-utilizador__menu {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
   z-index: 60;
-  width: 280px;
+  width: 260px;
   padding: 6px;
   border: 1px solid var(--bo-linha);
   border-radius: var(--bo-raio);
@@ -96,13 +96,13 @@
 }
 
 .bo-utilizador__info strong {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: var(--bo-ink);
 }
 
 .bo-utilizador__info span {
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: #64748b;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -124,9 +124,9 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 0.9375rem;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: #334155;
   text-align: left;

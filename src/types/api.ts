@@ -150,13 +150,12 @@ export interface StoreSettings {
   updatedBy?: string | null;
 }
 
-/** Cores do back-office (GET e PUT /settings/theme). Cada cor é `#rrggbb`; `null` = a cor original do layout. */
+/**
+ * Cores do back-office (GET e PUT /settings/theme): chave → `#rrggbb` (primary, accent, menu, background, chart1,
+ * chart2, success, warning, danger). Uma chave em falta usa a cor original do layout.
+ */
 export interface BackofficeThemeColors {
-  primary: string | null;
-  accent: string | null;
-  sidebar: string | null;
-  hero: string | null;
-  background: string | null;
+  colors: Record<string, string>;
   /** Só na resposta. */
   updatedAt?: string | null;
   updatedBy?: string | null;

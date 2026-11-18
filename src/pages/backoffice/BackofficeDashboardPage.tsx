@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChartColumn, ClipboardList, RefreshCw } from 'lucide-react';
 import { useCatalog } from '../../catalog/useCatalog';
-import { BackofficeWelcome } from '../../components/backoffice/BackofficeWelcome';
 import { useAuth } from '../../context/auth';
 import { useCategories } from '../../hooks/useCategories';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -80,24 +79,25 @@ export function BackofficeDashboardPage() {
 
   return (
     <div className="backoffice-page dash">
-      <BackofficeWelcome
-        now={now}
-        phrase="Indicadores de gestão e o trabalho do dia na loja Super7 Digital."
-        note={
-          <>
-            {ordersQuery.dataUpdatedAt > 0 && <span>Actualizado às {clockTime(ordersQuery.dataUpdatedAt)}</span>}
-            <button
-              type="button"
-              className="bo-boas-vindas__accao"
-              onClick={refresh}
-              disabled={ordersQuery.isFetching}
-            >
-              <RefreshCw size={15} className={ordersQuery.isFetching ? 'dash-spin' : undefined} aria-hidden="true" />
-              {ordersQuery.isFetching ? 'A actualizar…' : 'Actualizar'}
-            </button>
-          </>
-        }
-      />
+      <div className="backoffice-header">
+        <div className="backoffice-header-inner">
+          <div className="backoffice-header-row">
+            <div>
+              <h1 className="section-title">Painel</h1>
+              <p className="section-subtitle">Indicadores de gestão e o trabalho do dia na loja Super7 Digital.</p>
+            </div>
+            <div className="dash-header-actions">
+              {ordersQuery.dataUpdatedAt > 0 && (
+                <span className="dash-updated">Actualizado às {clockTime(ordersQuery.dataUpdatedAt)}</span>
+              )}
+              <button type="button" className="btn btn-outline btn-sm" onClick={refresh} disabled={ordersQuery.isFetching}>
+                <RefreshCw size={14} className={ordersQuery.isFetching ? 'dash-spin' : undefined} aria-hidden="true" />
+                {ordersQuery.isFetching ? 'A actualizar…' : 'Actualizar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="backoffice-body">
         <div className="dash-tabs" role="tablist" aria-label="Vistas do painel">

@@ -23,6 +23,9 @@ const BackofficeLayout = lazy(() =>
 const BackofficeOrdersPage = lazy(() =>
   import('./pages/backoffice/BackofficeOrdersPage').then((module) => ({ default: module.BackofficeOrdersPage })),
 );
+const BackofficeOrderDetailPage = lazy(() =>
+  import('./pages/backoffice/BackofficeOrderDetailPage').then((module) => ({ default: module.BackofficeOrderDetailPage })),
+);
 const BackofficeProductsPage = lazy(() =>
   import('./pages/backoffice/BackofficeProductsPage').then((module) => ({ default: module.BackofficeProductsPage })),
 );
@@ -91,6 +94,7 @@ function App() {
                   }
                 />
                 <Route path="encomendas" element={<BackofficeOrdersPage />} />
+                <Route path="encomendas/:id" element={<BackofficeOrderDetailPage />} />
                 <Route
                   path="produtos"
                   element={

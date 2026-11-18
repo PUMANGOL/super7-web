@@ -175,16 +175,27 @@ mostra o estado actual da API.
 | Definições da loja (ver) | ADMIN, MANAGER |
 | Definições da loja (alterar), Aparência | ADMIN |
 
-O layout segue a base do People Connect (`src/components/backoffice/BackofficeLayout.*`): fonte Outfit, barra
-verde no topo com a pesquisa de encomendas (abre `/backoffice/encomendas?q=`), menu lateral escuro com grupos
-(Geral, Catálogo, Loja), que encolhe para só ícones e no telemóvel sai de lado, e o Painel abre com a faixa
-"Bom dia". O menu encolhido e os grupos fechados ficam guardados no browser.
+O layout segue a base do People Connect, em tamanho compacto (`src/components/backoffice/BackofficeLayout.*`):
+fonte Outfit, barra verde no topo com a pesquisa de encomendas (abre `/backoffice/encomendas?q=`) e, por baixo, a
+barra do menu horizontal com as páginas agrupadas (Geral, Catálogo, Loja). Até 1024 px o menu sai de lado.
 
-Em **Aparência** (`/backoffice/aparencia`, só ADMIN) escolhem-se cinco cores: principal, destaque, menu lateral,
-faixa do Painel e fundo das páginas, ou um conjunto pronto. O back-office mostra-as logo, antes de gravar; os tons
-do texto e dos realces são calculados (`theme/theme.ts`), e o fundo escuro ou uma cor principal clara demais não se
-gravam. Com `backoffice-theme` em `api_features`, as cores vêm de `GET /settings/theme` e gravam-se com
-`PUT /settings/theme`, para toda a equipa; sem ela, ficam só no browser de quem as escolheu.
+**Encomendas** (`/backoffice/encomendas`): separadores por estado com contagens, pesquisa, filtros (loja, pagamento,
+entrega), ordem e páginas de 25, tudo no endereço (ao voltar do detalhe a lista está como estava). Cada linha mostra a
+referência e a data, o cliente, os artigos, a entrega, o pagamento (com "Comprovativo por verificar"), o estado e o
+total, e abre o detalhe. O **detalhe** (`/backoffice/encomendas/:id`) tem as etapas, os artigos e os totais, o
+cliente (telefone e e-mail clicáveis, outras encomendas), a entrega, o pagamento com o comprovativo (ver, confirmar,
+recusar) e o botão do passo seguinte (começar a preparar, marcar como pronta, entregue) ou cancelar. Imprime-se
+sem barras nem botões.
+
+Em **Aparência** (`/backoffice/aparencia`, só ADMIN) escolhem-se nove cores, ou um conjunto pronto: estrutura
+(principal, destaque, barra do menu, fundo), gráficos (série principal e segunda série) e alertas (concluído,
+atenção, crítico). O back-office mostra-as logo, antes de gravar. Os tons derivados são calculados em
+`theme/theme.ts`: o texto legível sobre cada cor, a escala do funil a partir da série principal e o texto dos
+alertas escurecido até 4,5:1. As cores dos gráficos seguem as regras da paleta do painel (tom médio, cor viva, as duas
+séries distinguíveis com visão normal e com daltonismo); um par como vermelho/verde, um fundo escuro ou uma cor
+principal clara demais não se gravam. Com `backoffice-theme` em `api_features`, as cores vêm de
+`GET /settings/theme` e gravam-se com `PUT /settings/theme` (um mapa chave → `#rrggbb`), para toda a equipa; sem
+ela, ficam só no browser de quem as escolheu.
 
 O estado das encomendas segue o fluxo Pendente → Em Processamento → Pronto para Entrega → Entregue, com
 Cancelado possível antes de Entregue; cada mudança envia um e-mail ao cliente.

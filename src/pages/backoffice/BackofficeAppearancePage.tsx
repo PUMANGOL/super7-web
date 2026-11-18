@@ -1,15 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { CircleCheck, OctagonX, RotateCcw, TriangleAlert } from 'lucide-react';
 import { getApiErrorMessages } from '../../api/client';
-import { BackofficeWelcome } from '../../components/backoffice/BackofficeWelcome';
 import {
+  checkTheme,
   DEFAULT_THEME,
   normalizeHex,
   sameTheme,
   THEME_FIELDS,
+  THEME_GROUPS,
   THEME_KEYS,
   THEME_PRESETS,
-  themeProblems,
   type BackofficeTheme,
   type ThemeKey,
 } from '../../components/backoffice/theme/theme';
@@ -17,9 +17,17 @@ import { useBackofficeTheme } from '../../components/backoffice/theme/themeConte
 import { useToast } from '../../context/toast';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { formatDate } from '../../utils/helpers';
-import { useNow } from './dashboard/hooks';
 import './BackofficeSettingsPage.css';
 import './BackofficeAppearancePage.css';
+
+/** Barras da miniatura: alturas (%) das duas séries, para ver as cores dos gráficos lado a lado. */
+const PREVIEW_BARS = [
+  [55, 30],
+  [80, 45],
+  [40, 60],
+  [95, 50],
+  [65, 35],
+];
 
 /** Aparência do back-office: o ADMIN escolhe as cores; o back-office mostra-as logo, antes de gravar. */
 export function BackofficeAppearancePage() {
@@ -32,7 +40,6 @@ export function BackofficeAppearancePage() {
 function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
   const { shared, updatedAt, updatedBy, setPreview, saveTheme, saving } = useBackofficeTheme();
   const { showToast } = useToast();
-  const now = useNow(60_000);
   const [draft, setDraft] = useState(initial);
   const [texts, setTexts] = useState<BackofficeTheme>(initial);
   const [errors, setErrors] = useState<string[]>([]);
@@ -40,37 +47,33 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
   // Ao sair da página sem gravar, o back-office volta às cores gravadas.
   useEffect(() => () => setPreview(null), [setPreview]);
 
-  const update = (next: BackofficeTheme) => {
+  const apply = (next: BackofficeTheme) => {
     setDraft(next);
-    setTexts(next);
     setErrors([]);
     setPreview(sameTheme(next, initial) ? null : next);
+  };
+
+  const update = (next: BackofficeTheme) => {
+    apply(next);
+    setTexts(next);
   };
 
   const typeColor = (key: ThemeKey, value: string) => {
     setTexts((current) => ({ ...current, [key]: value }));
     const hex = normalizeHex(value);
-    if (hex && hex !== draft[key]) {
-      const next = { ...draft, [key]: hex };
-      setDraft(next);
-      setErrors([]);
-      setPreview(sameTheme(next, initial) ? null : next);
-    }
+    if (hex && hex !== draft[key]) apply({ ...draft, [key]: hex });
   };
 
   const changed = !sameTheme(draft, initial);
-  const problems = themeProblems(draft);
+  const check = checkTheme(draft);
+  const blocked = check.errors.length > 0;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!changed || problems.length > 0) return;
+    if (!changed || blocked) return;
     try {
       await saveTheme(draft);
-      showToast(
-        shared
-          ? 'Cores guardadas. A equipa vê-as ao abrir ou voltar ao back-office.'
-          : 'Cores guardadas neste browser.',
-      );
+      showToast(shared ? 'Cores guardadas. A equipa vê-as ao abrir ou voltar ao back-office.' : 'Cores guardadas neste browser.');
     } catch (error) {
       setErrors(getApiErrorMessages(error, 'Não foi possível guardar as cores.'));
     }
@@ -82,8 +85,8 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
         <div className="backoffice-header-inner">
           <h1 className="section-title">Aparência do back-office</h1>
           <p className="section-subtitle">
-            Cores da barra do topo, do menu e do painel{shared ? ', para toda a equipa' : ''}. As alterações aparecem
-            logo, para ver antes de gravar.
+            Cores da barra, do menu, dos gráficos e dos alertas{shared ? ', para toda a equipa' : ''}. As alterações
+            aparecem logo, para ver antes de gravar.
           </p>
         </div>
       </div>
@@ -110,7 +113,7 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
                     onClick={() => update(preset.theme)}
                   >
                     <span className="aparencia-conjunto__cores" aria-hidden="true">
-                      {THEME_KEYS.map((key) => (
+                      {(['primary', 'accent', 'menu', 'background'] as ThemeKey[]).map((key) => (
                         <span key={key} style={{ background: preset.theme[key] }} />
                       ))}
                     </span>
@@ -120,57 +123,67 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
               </div>
             </fieldset>
 
-            <fieldset className="settings-card aparencia__cartao" disabled={saving}>
-              <legend>Cores</legend>
-              {THEME_KEYS.map((key) => {
-                const field = THEME_FIELDS[key];
-                const id = `aparencia-${key}`;
-                return (
-                  <div key={key} className="aparencia-cor">
-                    <div className="aparencia-cor__nome">
-                      <label htmlFor={id}>{field.label}</label>
-                      <small id={`${id}-ajuda`}>{field.help}</small>
+            {THEME_GROUPS.map((group) => (
+              <fieldset key={group.id} className="settings-card aparencia__cartao" disabled={saving}>
+                <legend>{group.label}</legend>
+                <p className="settings-help">{group.help}</p>
+                {group.keys.map((key) => {
+                  const field = THEME_FIELDS[key];
+                  const id = `aparencia-${key}`;
+                  return (
+                    <div key={key} className="aparencia-cor">
+                      <div className="aparencia-cor__nome">
+                        <label htmlFor={id}>{field.label}</label>
+                        <small id={`${id}-ajuda`}>{field.help}</small>
+                      </div>
+                      <div className="aparencia-cor__campos">
+                        <input
+                          type="color"
+                          className="aparencia-cor__amostra"
+                          value={draft[key]}
+                          onChange={(event) => update({ ...draft, [key]: event.target.value })}
+                          aria-label={`${field.label}: escolher no quadro de cores`}
+                        />
+                        <input
+                          id={id}
+                          type="text"
+                          className="form-input aparencia-cor__hex"
+                          value={texts[key]}
+                          onChange={(event) => typeColor(key, event.target.value)}
+                          onBlur={() => setTexts((current) => ({ ...current, [key]: draft[key] }))}
+                          aria-describedby={`${id}-ajuda`}
+                          aria-invalid={normalizeHex(texts[key]) === null}
+                          maxLength={7}
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm aparencia-cor__original"
+                          onClick={() => update({ ...draft, [key]: DEFAULT_THEME[key] })}
+                          disabled={draft[key] === DEFAULT_THEME[key]}
+                          title={`Voltar à cor original (${DEFAULT_THEME[key]})`}
+                        >
+                          <RotateCcw size={13} aria-hidden="true" />
+                          Original
+                        </button>
+                      </div>
                     </div>
-                    <div className="aparencia-cor__campos">
-                      <input
-                        type="color"
-                        className="aparencia-cor__amostra"
-                        value={draft[key]}
-                        onChange={(event) => update({ ...draft, [key]: event.target.value })}
-                        aria-label={`${field.label}: escolher no quadro de cores`}
-                      />
-                      <input
-                        id={id}
-                        type="text"
-                        className="form-input aparencia-cor__hex"
-                        value={texts[key]}
-                        onChange={(event) => typeColor(key, event.target.value)}
-                        onBlur={() => setTexts((current) => ({ ...current, [key]: draft[key] }))}
-                        aria-describedby={`${id}-ajuda`}
-                        aria-invalid={normalizeHex(texts[key]) === null}
-                        maxLength={7}
-                        spellCheck={false}
-                        autoComplete="off"
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm aparencia-cor__original"
-                        onClick={() => update({ ...draft, [key]: DEFAULT_THEME[key] })}
-                        disabled={draft[key] === DEFAULT_THEME[key]}
-                        title={`Voltar à cor original (${DEFAULT_THEME[key]})`}
-                      >
-                        <RotateCcw size={14} aria-hidden="true" />
-                        Original
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </fieldset>
+                  );
+                })}
+              </fieldset>
+            ))}
 
-            {(problems.length > 0 || errors.length > 0) && (
+            {(check.errors.length > 0 || errors.length > 0) && (
               <div className="settings-errors" role="alert">
-                {[...problems, ...errors].map((message) => (
+                {[...check.errors, ...errors].map((message) => (
+                  <p key={message}>{message}</p>
+                ))}
+              </div>
+            )}
+            {check.warnings.length > 0 && (
+              <div className="aparencia-aviso" role="status">
+                {check.warnings.map((message) => (
                   <p key={message}>{message}</p>
                 ))}
               </div>
@@ -188,7 +201,7 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
               <button type="button" className="btn btn-outline" onClick={() => update(initial)} disabled={saving || !changed}>
                 Desfazer alterações
               </button>
-              <button type="submit" className="btn btn-primary" disabled={saving || !changed || problems.length > 0}>
+              <button type="submit" className="btn btn-primary" disabled={saving || !changed || blocked}>
                 {saving ? 'A guardar…' : 'Guardar cores'}
               </button>
             </div>
@@ -210,40 +223,44 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
                 <span className="aparencia-mini__procura" />
                 <span className="aparencia-mini__avatar" />
               </div>
-              <div className="aparencia-mini__corpo">
-                <div className="aparencia-mini__menu">
-                  <span className="aparencia-mini__rotulo" />
-                  <span className="aparencia-mini__item aparencia-mini__item--activo" />
-                  <span className="aparencia-mini__item" />
-                  <span className="aparencia-mini__rotulo" />
-                  <span className="aparencia-mini__item" />
-                  <span className="aparencia-mini__item" />
+              <div className="aparencia-mini__menu">
+                <span className="aparencia-mini__item aparencia-mini__item--activo" />
+                <span className="aparencia-mini__item" />
+                <span className="aparencia-mini__divisor" />
+                <span className="aparencia-mini__item" />
+                <span className="aparencia-mini__item" />
+                <span className="aparencia-mini__item" />
+              </div>
+              <div className="aparencia-mini__conteudo">
+                <div className="aparencia-mini__cartoes">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
                 </div>
-                <div className="aparencia-mini__conteudo">
-                  <div className="aparencia-mini__faixa">
-                    <span className="aparencia-mini__data" />
-                    <span className="aparencia-mini__linhas">
-                      <i />
-                      <i />
-                      <i />
+                <div className="aparencia-mini__grafico">
+                  {PREVIEW_BARS.map(([first, second], index) => (
+                    <span key={index} className="aparencia-mini__par">
+                      <i style={{ height: `${first}%` }} />
+                      <i style={{ height: `${second}%` }} />
                     </span>
-                  </div>
-                  <div className="aparencia-mini__cartoes">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
-            <p className="aparencia__antevisao-nota">A faixa do Painel, com estas cores:</p>
-            <div className="aparencia__faixa" aria-hidden="true">
-              <BackofficeWelcome
-                now={now}
-                compact
-                phrase="Indicadores de gestão e o trabalho do dia na loja Super7 Digital."
-              />
-            </div>
+
+            <p className="aparencia__antevisao-nota">Alertas, com as cores escolhidas:</p>
+            <ul className="aparencia-alertas">
+              <li className="aparencia-alerta aparencia-alerta--sucesso">
+                <CircleCheck size={15} aria-hidden="true" /> Pagamento confirmado
+              </li>
+              <li className="aparencia-alerta aparencia-alerta--atencao">
+                <TriangleAlert size={15} aria-hidden="true" /> 3 comprovativos por verificar
+              </li>
+              <li className="aparencia-alerta aparencia-alerta--critico">
+                <OctagonX size={15} aria-hidden="true" /> Pagamento recusado
+              </li>
+            </ul>
           </aside>
         </div>
       </div>

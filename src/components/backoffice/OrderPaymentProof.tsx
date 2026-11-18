@@ -40,10 +40,11 @@ export function OrderPaymentProof({ order, onUpdated }: OrderPaymentProofProps) 
     [proofUrl],
   );
 
-  // Outro comprovativo enviado entretanto: o OrderItemsModal muda a key e o painel recomeça.
+  // Outro comprovativo enviado entretanto: o detalhe da encomenda muda a key e o painel recomeça.
   const uploadedAt = payment?.proofUploadedAt ?? null;
 
   if (!payment || payment.method !== 'IBAN') return null;
+  if (!pending && !uploadedAt) return null;
 
   const openProof = async () => {
     setLoading(true);
@@ -80,20 +81,20 @@ export function OrderPaymentProof({ order, onUpdated }: OrderPaymentProofProps) 
   const isImage = proofType?.startsWith('image/');
 
   return (
-    <div className="order-payment-proof">
-      <div className="order-payment-proof-head">
+    <div className="encomenda-comprovativo">
+      <div className="encomenda-comprovativo__cabeca">
         <FileText size={16} />
         <div>
-          <span className="order-items-modal-label">Comprovativo da transferência</span>
+          <span className="encomenda-comprovativo__rotulo">Comprovativo da transferência</span>
           {uploadedAt ? (
-            <span className="order-items-modal-value">
+            <span className="encomenda-comprovativo__valor">
               {payment.proofFileName ?? 'Comprovativo'} · enviado {formatDate(uploadedAt)}
             </span>
           ) : (
-            <span className="order-items-modal-value">Ainda não foi enviado pelo cliente</span>
+            <span className="encomenda-comprovativo__valor">Ainda não foi enviado pelo cliente</span>
           )}
           {pending && order.compraRef && (
-            <span className="order-items-modal-subvalue">
+            <span className="encomenda-sub">
               Confira no banco a transferência de {formatPrice(getOrderTotal(order))} com a descrição {order.compraRef}.
             </span>
           )}
@@ -105,10 +106,10 @@ export function OrderPaymentProof({ order, onUpdated }: OrderPaymentProofProps) 
           {loading ? 'A abrir…' : 'Ver comprovativo'}
         </button>
       )}
-      {loadError && <p className="order-payment-proof-error">{loadError}</p>}
+      {loadError && <p className="encomenda-erro">{loadError}</p>}
 
       {proofUrl && (
-        <div className="order-payment-proof-preview">
+        <div className="encomenda-comprovativo__ver">
           {isImage ? (
             <img src={proofUrl} alt={`Comprovativo da encomenda ${order.compraRef ?? ''}`} />
           ) : (
@@ -121,7 +122,7 @@ export function OrderPaymentProof({ order, onUpdated }: OrderPaymentProofProps) 
       )}
 
       {canDecide && (
-        <div className="order-payment-proof-actions">
+        <div className="encomenda-comprovativo__accoes">
           <button type="button" className="btn btn-primary btn-sm" onClick={() => decide('PAID')} disabled={deciding}>
             <CheckCircle2 size={16} /> {deciding && variables?.status === 'PAID' ? 'A confirmar…' : 'Confirmar pagamento'}
           </button>
