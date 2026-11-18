@@ -32,6 +32,11 @@ export function plural(count: number, singular: string, pluralForm: string): str
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }
 
+/** Contagem decrescente em minutos e segundos: 95 → "1:35". */
+export function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 /** "923000000" → "923 000 000". */
 export function formatPhone(value: string): string {
   return String(value ?? '')

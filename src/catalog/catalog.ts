@@ -99,6 +99,30 @@ async function fetchBookAuthors(): Promise<Map<string, string>> {
   }
 }
 
+/** Produto na lista do back-office: com `hidden` (oculto na loja) e os dados da API, para o mostrar ou ocultar. */
+export interface StaffProduct extends Product {
+  hidden: boolean;
+  source: ApiProduct;
+}
+
+/**
+ * Back-office: todos os produtos não eliminados, incluindo os ocultos na loja (`available=false`), que o catálogo
+ * público não devolve. Só ADMIN e MANAGER (`GET /product/list?includeUnavailable=true`).
+ */
+export async function fetchStaffProducts(): Promise<StaffProduct[]> {
+  const [apiProducts, apiCategories, bookAuthors] = await Promise.all([
+    fetchProductList({ includeUnavailable: true }),
+    fetchCategories(),
+    fetchBookAuthors(),
+  ]);
+  const categoriesById = new Map(apiCategories.map((category) => [category.id, category]));
+  return apiProducts.map((api) => ({
+    ...mapProduct(api, { categoriesById, bookAuthors }),
+    hidden: api.available === false,
+    source: api,
+  }));
+}
+
 export async function fetchCatalog(): Promise<Catalog> {
   const [apiProducts, apiCategories, bookAuthors] = await Promise.all([
     fetchProductList(),

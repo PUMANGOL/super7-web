@@ -451,6 +451,307 @@
   color: var(--s7-vermelho-escuro);
 }
 
+/* Tempo para aceitar o Multicaixa Express no cartão do pagamento (ExpressTimeLeft), a contar ao segundo */
+.s7-prazo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--s7-raio-s);
+  background: var(--s7-verde-claro);
+  color: var(--s7-verde-escuro);
+  font-size: var(--s7-t-s);
+}
+.s7-prazo .s7-ico {
+  flex: none;
+}
+.s7-prazo strong {
+  font-variant-numeric: tabular-nums;
+}
+.s7-prazo--fim {
+  background: var(--s7-vermelho-claro);
+  color: var(--s7-vermelho-escuro);
+}
+
+/* Pagamento confirmado: janela com o selo "Pago" (PaidDialog.tsx) --------- */
+.s7-pago {
+  width: min(420px, calc(100% - 32px));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--s7-raio-l);
+  /* O selo sai por cima da caixa e os papelinhos voam para fora dela. */
+  overflow: visible;
+  background: radial-gradient(circle at 50% 0, var(--s7-verde-claro) 0, rgba(232, 243, 238, 0) 62%), var(--s7-papel);
+  color: var(--s7-tinta);
+  box-shadow: var(--s7-sombra-forte);
+}
+.s7-pago[open] {
+  animation: s7-pago-entrar 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+.s7-pago::backdrop {
+  background: rgba(6, 51, 35, 0.62);
+  backdrop-filter: blur(4px);
+  animation: s7-pago-fundo 0.3s ease-out both;
+}
+.s7-pago__caixa {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 0 28px 28px;
+  text-align: center;
+}
+.s7-pago__caixa > h2 {
+  margin: 0;
+  font: 800 1.5rem / 1.2 var(--s7-fonte-display);
+  color: var(--s7-verde-escuro);
+}
+.s7-pago__caixa > p {
+  margin: 0;
+  color: var(--s7-tinta-2);
+}
+.s7-pago__caixa > :not(.s7-pago__selo) {
+  animation: s7-pago-subir 0.45s ease-out both;
+}
+.s7-pago__caixa > h2 {
+  animation-delay: 0.55s;
+}
+.s7-pago__caixa > p {
+  animation-delay: 0.65s;
+}
+.s7-pago__caixa > .s7-btn {
+  margin-top: 6px;
+  animation-delay: 0.78s;
+}
+.s7-pago__inteiro {
+  white-space: nowrap;
+}
+.s7-pago__ref {
+  display: grid;
+  gap: 2px;
+  padding: 10px 18px;
+  border: 1px dashed var(--s7-linha-forte);
+  border-radius: var(--s7-raio);
+}
+.s7-pago__ref span {
+  font-size: var(--s7-t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.s7-pago__ref b {
+  font-family: var(--s7-fonte-display);
+  color: var(--s7-tinta);
+  overflow-wrap: anywhere;
+}
+
+/* Selo: 168 × 198 (viewBox 200 × 236); o centro do disco fica a 84 px do topo e da esquerda. */
+.s7-pago__selo {
+  position: relative;
+  width: 168px;
+  height: 198px;
+  margin-top: -88px;
+  margin-bottom: -18px;
+}
+.s7-pago__desenho {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-7deg);
+  transform-origin: 50% 42%;
+  filter: drop-shadow(0 10px 18px rgba(1, 80, 47, 0.35));
+  animation: s7-pago-carimbo 0.75s cubic-bezier(0.3, 0.7, 0.4, 1) 0.2s both,
+    s7-pago-balanco 4.5s ease-in-out 1.3s infinite;
+}
+.s7-pago__roseta {
+  fill: var(--s7-verde);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: s7-pago-girar 40s linear infinite;
+}
+.s7-pago__fita {
+  fill: var(--s7-vermelho);
+}
+.s7-pago__fita--sombra {
+  fill: var(--s7-vermelho-escuro);
+}
+.s7-pago__costura {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.5 7;
+}
+.s7-pago__visto {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: s7-pago-visto 0.45s ease-out 0.8s forwards;
+}
+.s7-pago__texto {
+  font: 800 40px var(--s7-fonte-display);
+  letter-spacing: 3px;
+  fill: #fff;
+}
+.s7-pago__sub {
+  font: 700 10px var(--s7-fonte-texto);
+  letter-spacing: 2.5px;
+  fill: rgba(255, 255, 255, 0.82);
+}
+.s7-pago__reflexo {
+  transform: translateX(-90px);
+  animation: s7-pago-reflexo 3.4s ease-in-out 1.4s infinite;
+}
+/* Ondas do impacto do carimbo */
+.s7-pago__onda {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 140px;
+  height: 140px;
+  border: 4px solid var(--s7-verde);
+  border-radius: 50%;
+  opacity: 0;
+  animation: s7-pago-onda 0.9s ease-out 0.62s both;
+}
+.s7-pago__onda--2 {
+  border-color: var(--s7-ouro);
+  animation-delay: 0.78s;
+}
+/* Papelinhos */
+.s7-pago__confetes {
+  position: absolute;
+  top: 84px;
+  left: 84px;
+}
+.s7-pago__confete {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  animation: s7-pago-confete 1.2s cubic-bezier(0.15, 0.7, 0.3, 1) 0.62s both;
+}
+.s7-pago__confete--bola {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+@keyframes s7-pago-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+  }
+}
+@keyframes s7-pago-fundo {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes s7-pago-subir {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes s7-pago-carimbo {
+  0% {
+    opacity: 0;
+    transform: scale(2.6) rotate(-28deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.9) rotate(-4deg);
+  }
+  75% {
+    transform: scale(1.06) rotate(-9deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-7deg);
+  }
+}
+@keyframes s7-pago-balanco {
+  0%,
+  100% {
+    transform: rotate(-7deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-3deg) translateY(-5px);
+  }
+}
+@keyframes s7-pago-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes s7-pago-visto {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes s7-pago-reflexo {
+  0% {
+    transform: translateX(-90px);
+  }
+  45%,
+  100% {
+    transform: translateX(300px);
+  }
+}
+@keyframes s7-pago-onda {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+@keyframes s7-pago-confete {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1) rotate(var(--r));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .s7-pago[open],
+  .s7-pago::backdrop,
+  .s7-pago__caixa > :not(.s7-pago__selo),
+  .s7-pago__desenho,
+  .s7-pago__roseta,
+  .s7-pago__reflexo {
+    animation: none;
+  }
+  .s7-pago__visto {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .s7-pago__onda,
+  .s7-pago__confetes {
+    display: none;
+  }
+}
+
 /* Pagamento por IBAN: dados da transferência e envio do comprovativo ------- */
 /* Dados da conta em blocos (BankTransfer.tsx): IBAN em destaque, destinatário e banco lado a lado, montante à parte */
 .s7-transferencia {

@@ -67,6 +67,64 @@
   align-items: center;
 }
 
+/* Mostrar / ocultar na loja (lista de produtos) */
+.backoffice-visibility {
+  color: var(--gray-600);
+}
+.backoffice-visibility:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+.backoffice-visibility--oculto {
+  color: #047857;
+}
+.backoffice-visibility--oculto:hover:not(:disabled) {
+  background: #ecfdf5;
+  color: #065f46;
+}
+.backoffice-visibility[aria-busy='true'] {
+  animation: backoffice-a-mudar 0.9s ease-in-out infinite alternate;
+}
+@keyframes backoffice-a-mudar {
+  to {
+    opacity: 0.3;
+  }
+}
+.backoffice-row--oculto .backoffice-book-thumb,
+.backoffice-row--oculto .backoffice-book-title,
+.backoffice-row--oculto .price {
+  opacity: 0.55;
+}
+.backoffice-badge-oculto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.backoffice-note-icon {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+/* Cartão "Ocultos na loja": filtra a lista */
+.stat-card--botao {
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.stat-card--botao:hover {
+  border-color: var(--gray-200);
+}
+.stat-card--activo {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 1px var(--brand-primary);
+}
+@media (min-width: 769px) {
+  .backoffice-stats--produtos {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
 .backoffice-note {
   margin-bottom: 1rem;
   padding: 0.75rem 1rem;

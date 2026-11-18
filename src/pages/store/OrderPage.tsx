@@ -12,15 +12,22 @@ import { BankTransferList, ProofFileInput } from '../../components/store/BankTra
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
-import { ExpressCountdown, ExpressRetryForm, IbanSwitchButton } from '../../components/store/PaymentAttempt';
+import { PaidDialog } from '../../components/store/PaidDialog';
+import {
+  ExpressCountdown,
+  ExpressRetryForm,
+  ExpressTimeLeft,
+  IbanSwitchButton,
+} from '../../components/store/PaymentAttempt';
 import { ProductImage } from '../../components/store/ProductBits';
-import { hasApiFeature, PAYMENT_METHOD_LABELS } from '../../config/store';
+import { EXPRESS_WINDOW_SECONDS, hasApiFeature, PAYMENT_METHOD_LABELS } from '../../config/store';
 import { ORDER_STATUS } from '../../constants/orderStatus';
 import { useAuth } from '../../context/auth';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { usePickupPosts } from '../../hooks/usePickupPosts';
 import type { ApiOrder, OrderCustomer, OrderPayment } from '../../types/api';
-import { formatDate, formatKz, formatPhone } from '../../utils/format';
+import { formatCountdown, formatDate, formatKz, formatPhone } from '../../utils/format';
+import { serverNow, useServerNow } from '../../utils/serverClock';
 
 type StepKey = 'received' | 'awaiting' | 'paid' | 'preparing' | 'ready';
 
@@ -159,6 +166,9 @@ function PaymentCard({ view }: { view: OrderView }) {
         <strong>{PAYMENT_METHOD_LABELS[payment.method]}</strong>
       </p>
       <p>{detail}</p>
+      {payment.method === 'MULTICAIXA_EXPRESS' && payment.status === 'PENDING' && payment.expiresAt && (
+        <ExpressTimeLeft expiresAt={payment.expiresAt} />
+      )}
       <PaymentFailureReason payment={payment} />
       {payment.method === 'REFERENCE' && payment.reference && payment.status === 'PENDING' && (
         <dl className="s7-referencia">
@@ -218,8 +228,8 @@ function DeliveryCard({ view }: { view: OrderView }) {
 
 /** Intervalo entre consultas enquanto o cliente confirma no Multicaixa Express (o seguimento aceita 30 por minuto). */
 const EXPRESS_POLL_MS = 5000;
-/** IBAN: a loja verifica o comprovativo à mão; basta perguntar de 30 em 30 segundos. */
-const IBAN_POLL_MS = 30000;
+/** IBAN ou à espera de nova tentativa: a loja confirma à mão; de 15 em 15 segundos (só com o separador visível). */
+const IBAN_POLL_MS = 15000;
 /** Depois do prazo, a API ainda leva uns segundos a dar o pagamento como expirado; ao fim de 5 min deixa de se perguntar. */
 const EXPRESS_POLL_GRACE_MS = 5 * 60 * 1000;
 
@@ -231,50 +241,62 @@ function awaitingIbanPayment(order: ApiOrder | undefined): boolean {
   );
 }
 
-/** Multicaixa Express ainda por confirmar: o cliente fica no passo "Aguarda pagamento" (2 minutos). */
-function awaitingExpressPayment(order: ApiOrder | undefined): boolean {
+/** Pedido Multicaixa Express por confirmar, numa encomenda por cancelar. */
+function pendingExpress(order: ApiOrder | undefined): boolean {
   const payment = order?.payment;
-  if (!order || !payment || payment.method !== 'MULTICAIXA_EXPRESS' || payment.status !== 'PENDING') return false;
-  if (order.status === ORDER_STATUS.CANCELLED) return false;
-  if (!payment.expiresAt) return true;
-  const end = new Date(payment.expiresAt).getTime();
-  return Number.isNaN(end) || Date.now() < end + EXPRESS_POLL_GRACE_MS;
+  return Boolean(
+    order &&
+      payment &&
+      payment.method === 'MULTICAIXA_EXPRESS' &&
+      payment.status === 'PENDING' &&
+      order.status !== ORDER_STATUS.CANCELLED,
+  );
+}
+
+/** Instante (ms) em que `iso` acontece; null sem data ou com data inválida. */
+function instant(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const time = new Date(iso).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Multicaixa Express ainda por confirmar: volta-se a perguntar à API até 5 minutos depois do fim dos 2 minutos (um
+ * pagamento aceite no último segundo ainda pode chegar). `now` é a hora do servidor.
+ */
+function awaitingExpressPayment(order: ApiOrder | undefined, now: number): boolean {
+  if (!pendingExpress(order)) return false;
+  const end = instant(order?.payment?.expiresAt);
+  return end === null || now < end + EXPRESS_POLL_GRACE_MS;
+}
+
+/** Os 2 minutos do pedido Express acabaram e a API ainda não o deu como expirado (fá-lo de 15 em 15 segundos). */
+function expressTimeUp(order: ApiOrder | undefined, now: number): boolean {
+  const end = instant(order?.payment?.expiresAt);
+  return pendingExpress(order) && end !== null && now >= end;
 }
 
 /** A encomenda ainda está reservada (`holdUntil`, definido pela API): o cliente pode pedir outro pagamento. */
-function withinHold(order: ApiOrder | undefined): boolean {
-  const holdUntil = order?.payment?.holdUntil;
-  if (!order || !holdUntil || order.status === ORDER_STATUS.CANCELLED || order.payment?.status === 'PAID') return false;
-  const end = new Date(holdUntil).getTime();
-  return !Number.isNaN(end) && Date.now() < end;
+function withinHold(order: ApiOrder | undefined, now: number): boolean {
+  const end = instant(order?.payment?.holdUntil);
+  if (!order || end === null || order.status === ORDER_STATUS.CANCELLED || order.payment?.status === 'PAID') return false;
+  return now < end;
 }
 
-/** Pedido Multicaixa Express recusado ou expirado, com a encomenda ainda reservada: o cliente tenta outra vez. */
-function canRetryPayment(order: ApiOrder | undefined): boolean {
+/**
+ * Pedido Multicaixa Express recusado, expirado ou com os 2 minutos acabados, e a encomenda ainda reservada: o cliente
+ * pede outro pagamento logo no fim da contagem, sem esperar que a API marque o pedido como expirado (a API aceita
+ * uma nova tentativa assim que o prazo do pedido actual termina).
+ */
+function canRetryPayment(order: ApiOrder | undefined, now: number): boolean {
   const payment = order?.payment;
-  return Boolean(
-    payment && payment.method === 'MULTICAIXA_EXPRESS' && (payment.status === 'FAILED' || payment.status === 'EXPIRED') &&
-      withinHold(order),
-  );
+  if (!payment || payment.method !== 'MULTICAIXA_EXPRESS' || !withinHold(order, now)) return false;
+  return payment.status === 'FAILED' || payment.status === 'EXPIRED' || expressTimeUp(order, now);
 }
 
 /** "sábado, 18 de novembro, às 19:30". */
 function formatHold(iso: string): string {
   return formatDate(iso, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-}
-
-/** Segundos até `iso` (0 depois disso), actualizados a cada segundo; null sem data. */
-function useSecondsLeft(iso: string | null): number | null {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!iso) return undefined;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [iso]);
-
-  if (!iso) return null;
-  const end = new Date(iso).getTime();
-  return Number.isNaN(end) ? null : Math.max(0, Math.ceil((end - now) / 1000));
 }
 
 function OrderSummary({ view }: { view: OrderView }) {
@@ -326,17 +348,21 @@ function OrderSummary({ view }: { view: OrderView }) {
 
 /**
  * Passo "Aguarda pagamento" do Multicaixa Express: a API enviou o pedido de pagamento (fila compra.online) e a página
- * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (2 minutos, na API): recarregar a página
- * não a reinicia. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando o pagamento é confirmado,
- * falha ou expira, a página passa sozinha para o passo seguinte.
+ * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (2 minutos, na API) e de `now`, a hora do
+ * servidor actualizada a cada segundo pelo OrderLoader: recarregar a página não a reinicia, e um relógio do dispositivo
+ * desacertado não a muda. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando o pagamento é
+ * confirmado, falha ou o tempo acaba, a página passa sozinha para o passo seguinte.
  */
-function ExpressPaymentWait({ view }: { view: OrderView }) {
-  useDocumentTitle('Aguarda pagamento');
+function ExpressPaymentWait({ view, now }: { view: OrderView; now: number }) {
   const { payment } = view;
   const amount = payment.amount ?? view.total;
-  const secondsLeft = useSecondsLeft(payment.expiresAt);
+  const end = instant(payment.expiresAt);
+  // A hora do servidor é medida ao segundo: nunca mais do que os 2 minutos do pedido ("2:01").
+  const secondsLeft = end === null ? null : Math.min(EXPRESS_WINDOW_SECONDS, Math.max(0, Math.ceil((end - now) / 1000)));
   const overdue = secondsLeft === 0;
   const phone = payment.phone ? formatPhone(payment.phone) : null;
+  // A contagem também no separador, para quem muda de janela.
+  useDocumentTitle(secondsLeft ? `${formatCountdown(secondsLeft)} · Confirme o pagamento` : 'Aguarda pagamento');
 
   return (
     <>
@@ -410,7 +436,9 @@ function PaymentRetry({ view, onRetried }: { view: OrderView; onRetried: (order:
   const { options } = useCheckoutOptions();
   const { payment } = view;
   const amount = payment.amount ?? view.total;
-  const expired = payment.status === 'EXPIRED';
+  // PENDING: os 2 minutos acabaram e a API ainda não marcou o pedido como expirado.
+  const expired = payment.status !== 'FAILED';
+  const checking = payment.status === 'PENDING';
   const ibanAvailable = options.paymentMethods.includes('IBAN');
 
   return (
@@ -445,6 +473,12 @@ function PaymentRetry({ view, onRetried }: { view: OrderView; onRetried: (order:
         <div className="s7-encomenda__col">
           <section className="s7-bloco s7-espera" aria-labelledby="s7-repetir-titulo">
             <h2 id="s7-repetir-titulo">Tentar outra vez com Multicaixa Express</h2>
+            {checking && (
+              <p className="s7-espera__estado" role="status">
+                <span className="s7-espera__pulso" aria-hidden="true" />
+                Se aceitou o pagamento nos últimos segundos, a confirmação aparece aqui sozinha.
+              </p>
+            )}
             <p>Enviamos um novo pedido de pagamento de {formatKz(amount)} para o telemóvel que indicar.</p>
             <ExpressRetryForm
               orderId={view.id}
@@ -772,6 +806,8 @@ function OrderLoader({ id }: { id: string }) {
   const staff = can('viewOrders');
   const tracking = hasApiFeature('order-tracking');
   const [local, setLocal] = useState(() => getLocalOrder(id));
+  // Quem fez a encomenda neste dispositivo vê os passos do pagamento, mesmo com sessão iniciada no back-office.
+  const customer = !staff || local !== null;
   const queryClient = useQueryClient();
   const queryKey = ['order', id, staff ? 'equipa' : 'seguimento'];
 
@@ -783,12 +819,40 @@ function OrderLoader({ id }: { id: string }) {
     enabled: staff || tracking,
     retry: false,
     // Multicaixa Express: volta a perguntar até o pagamento ser confirmado, falhar ou expirar. Com IBAN ou à espera
-    // de uma nova tentativa, de 30 em 30 segundos (um pagamento atrasado ainda pode chegar).
+    // de uma nova tentativa, de 15 em 15 segundos (um pagamento atrasado ainda pode chegar).
     refetchInterval: (query) => {
-      if (awaitingExpressPayment(query.state.data)) return EXPRESS_POLL_MS;
-      return awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data) ? IBAN_POLL_MS : false;
+      const now = serverNow();
+      if (awaitingExpressPayment(query.state.data, now)) return EXPRESS_POLL_MS;
+      return awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data, now) ? IBAN_POLL_MS : false;
     },
   });
+  const { refetch } = remote;
+
+  // Enquanto há pagamento por fazer, a página conta os segundos na hora do servidor (ponteiro do Express, fim do prazo,
+  // fim da reserva). Também à espera de nova tentativa e no IBAN: um novo pedido Express começa logo com a hora certa.
+  const remotePayment = remote.data?.payment;
+  const unpaid = Boolean(
+    remotePayment &&
+      remotePayment.status !== 'PAID' &&
+      remotePayment.method !== 'IN_STORE' &&
+      remote.data?.status !== ORDER_STATUS.CANCELLED,
+  );
+  const now = useServerNow(1000, unpaid);
+  const timeUp = expressTimeUp(remote.data, now);
+  // No fim dos 2 minutos pergunta logo à API: um pagamento aceite no último segundo aparece sem esperar pela consulta.
+  useEffect(() => {
+    if (timeUp) void refetch();
+  }, [timeUp, refetch]);
+
+  // Pagamento confirmado enquanto a página está aberta (Express aceite no telemóvel, IBAN confirmado pela loja):
+  // aparece a janela "Pago". Quem abre a página de uma encomenda já paga não a vê.
+  const paymentStatus = remotePayment?.status;
+  const [seenStatus, setSeenStatus] = useState(paymentStatus);
+  const [paidNotice, setPaidNotice] = useState(false);
+  if (paymentStatus !== seenStatus) {
+    setSeenStatus(paymentStatus);
+    if (paymentStatus === 'PAID' && seenStatus !== undefined) setPaidNotice(true);
+  }
 
   // Novo pedido de pagamento (Express outra vez ou IBAN): a resposta já traz o pagamento actualizado. O seguimento não
   // devolve o telemóvel, por isso o do novo pedido Express fica na cópia local.
@@ -824,31 +888,45 @@ function OrderLoader({ id }: { id: string }) {
       ? { ...remote.data, customer: mergeFilled(local.order.customer, remote.data.customer) }
       : order;
   const view = toOrderView(merged, local?.extras ?? null);
+  let screen;
   // Só com o estado vindo da API (que se vai actualizando): a cópia local fica sempre "pendente".
-  if (!staff && remote.data && awaitingExpressPayment(remote.data)) {
-    return <ExpressPaymentWait view={view} />;
-  }
-  // Pedido Express recusado ou expirado com a encomenda reservada: repetir ou mudar para IBAN.
-  if (!staff && remote.data && canRetryPayment(remote.data)) {
-    return <PaymentRetry view={view} onRetried={onRetried} />;
-  }
-  // IBAN: mesmo sem o seguimento da API (cópia local), o cliente tem de poder enviar o comprovativo.
-  if (!staff && awaitingIbanPayment(remote.data ?? local?.order)) {
+  // Pedido Express recusado, expirado ou com o tempo acabado, com a encomenda reservada: repetir ou mudar para IBAN.
+  if (customer && remote.data && canRetryPayment(remote.data, now)) {
+    screen = <PaymentRetry view={view} onRetried={onRetried} />;
+  } else if (customer && remote.data && awaitingExpressPayment(remote.data, now)) {
+    screen = <ExpressPaymentWait view={view} now={now} />;
+  } else if (customer && awaitingIbanPayment(remote.data ?? local?.order)) {
+    // IBAN: mesmo sem o seguimento da API (cópia local), o cliente tem de poder enviar o comprovativo.
     // Depois do envio, a cópia local passa a ter o comprovativo (sem o seguimento da API, é a única fonte).
     const onUploaded = (payment: OrderPayment) => {
       const updated = updateLocalOrderPayment(id, payment);
       if (updated) setLocal(updated);
-      if (staff || tracking) void remote.refetch();
+      if (staff || tracking) void refetch();
     };
-    return (
+    screen = (
       <IbanPaymentWait
         view={view}
         onUploaded={onUploaded}
-        onRetried={remote.data && withinHold(remote.data) ? onRetried : undefined}
+        onRetried={remote.data && withinHold(remote.data, now) ? onRetried : undefined}
       />
     );
+  } else {
+    screen = <OrderDetails view={view} fromDevice={!remote.data} />;
   }
-  return <OrderDetails view={view} fromDevice={!remote.data} />;
+
+  return (
+    <>
+      {screen}
+      {paidNotice && customer && (
+        <PaidDialog
+          amount={view.payment.amount ?? view.total}
+          method={view.payment.method}
+          reference={view.compraRef}
+          onClose={() => setPaidNotice(false)}
+        />
+      )}
+    </>
+  );
 }
 
 function OrderLookup({ initial = '', invalid = false }: { initial?: string; invalid?: boolean }) {

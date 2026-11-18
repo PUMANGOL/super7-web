@@ -1,9 +1,14 @@
 import { apiClient, unwrap } from './client';
 import type { ApiProduct, ApiResponse, ProductRequest } from '../types/api';
 
-/** Catálogo completo: produtos activos e disponíveis (inclui livros), ordenados por nome. Em cache no Redis. */
-export async function fetchProductList(): Promise<ApiProduct[]> {
-  const { data } = await apiClient.get<ApiResponse<ApiProduct[]>>('/product/list');
+/**
+ * Catálogo completo: produtos activos e visíveis na loja (inclui livros), ordenados por nome. Em cache no Redis.
+ * Com `includeUnavailable`, também os ocultos (`available=false`), para o back-office: só ADMIN e MANAGER.
+ */
+export async function fetchProductList(options: { includeUnavailable?: boolean } = {}): Promise<ApiProduct[]> {
+  const { data } = await apiClient.get<ApiResponse<ApiProduct[]>>('/product/list', {
+    params: options.includeUnavailable ? { includeUnavailable: true } : undefined,
+  });
   return unwrap(data) ?? [];
 }
 

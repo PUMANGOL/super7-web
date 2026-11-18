@@ -4,15 +4,39 @@ import { getApiErrorMessage } from '../../api/client';
 import { retryPayment } from '../../api/orders';
 import { isValidMobile, normalisePhone } from '../../catalog/checkout';
 import type { ApiOrder } from '../../types/api';
-import { formatDate, plural } from '../../utils/format';
+import { formatCountdown, formatDate, plural } from '../../utils/format';
+import { useServerNow } from '../../utils/serverClock';
+import { EXPRESS_WINDOW_SECONDS } from '../../config/store';
+import { Icon } from './Icon';
 
-/** Validade de cada pedido Multicaixa Express na API (app.payment.express-validity-minutes). */
-const EXPRESS_WINDOW_SECONDS = 120;
 const DIAL_RADIUS = 52;
 const DIAL_LENGTH = 2 * Math.PI * DIAL_RADIUS;
 
-function formatCountdown(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+/**
+ * Tempo que falta para aceitar o pedido Multicaixa Express, a contar ao segundo na hora do servidor (no cartão do
+ * pagamento, por exemplo quando a equipa abre a encomenda).
+ */
+export function ExpressTimeLeft({ expiresAt }: { expiresAt: string }) {
+  const end = new Date(expiresAt).getTime();
+  const valid = !Number.isNaN(end);
+  const now = useServerNow(1000, valid);
+  if (!valid) return null;
+  // A hora do servidor é medida ao segundo: nunca mais do que os 2 minutos do pedido.
+  const secondsLeft = Math.min(EXPRESS_WINDOW_SECONDS, Math.max(0, Math.ceil((end - now) / 1000)));
+  const hour = formatDate(expiresAt, { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <p className={secondsLeft > 0 && secondsLeft <= 30 ? 's7-prazo s7-prazo--fim' : 's7-prazo'}>
+      <Icon name="relogio" />
+      {secondsLeft > 0 ? (
+        <span>
+          Faltam <strong>{formatCountdown(secondsLeft)}</strong> para aceitar no telemóvel (até às {hour}).
+        </span>
+      ) : (
+        <span>O tempo para aceitar terminou às {hour}.</span>
+      )}
+    </p>
+  );
 }
 
 /**

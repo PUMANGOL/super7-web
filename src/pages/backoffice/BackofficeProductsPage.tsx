@@ -1,22 +1,24 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { getApiErrorMessage } from '../../api/client';
+import type { StaffProduct } from '../../catalog/catalog';
 import { discountPercent, inCampaign, isInStock, searchText } from '../../catalog/query';
-import type { Product } from '../../catalog/types';
-import { useCatalog } from '../../catalog/useCatalog';
 import { Thumbnail } from '../../components/backoffice/Thumbnail';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
 import { useToast } from '../../context/toast';
-import { useDeleteProduct } from '../../hooks/useProducts';
+import { useCategories } from '../../hooks/useCategories';
+import { useDeleteProduct, useSetProductVisibility, useStaffProducts } from '../../hooks/useProducts';
 import { formatPrice } from '../../utils/helpers';
 import './BackofficeProductFormPage.css';
 
 const PAGE_SIZE = 20;
 
 const SEGMENTS = [
+  { value: 'visivel', label: 'Visíveis na loja' },
+  { value: 'oculto', label: 'Ocultos na loja' },
   { value: 'natal', label: 'Campanha de Natal' },
   { value: 'cabazes', label: 'Só cestas' },
   { value: 'escoamento', label: 'Escoamento' },
@@ -25,8 +27,12 @@ const SEGMENTS = [
   { value: 'pouco', label: 'Stock baixo (≤ 5)' },
 ];
 
-function matchesSegment(product: Product, segment: string): boolean {
+function matchesSegment(product: StaffProduct, segment: string): boolean {
   switch (segment) {
+    case 'visivel':
+      return !product.hidden;
+    case 'oculto':
+      return product.hidden;
     case 'natal':
       return inCampaign(product, 'natal');
     case 'cabazes':
@@ -45,17 +51,19 @@ function matchesSegment(product: Product, segment: string): boolean {
 }
 
 export function BackofficeProductsPage() {
-  const catalog = useCatalog();
+  const staffProducts = useStaffProducts();
+  const { data: categories = [] } = useCategories();
   const { mutate: deleteProduct, isPending: deleting } = useDeleteProduct();
+  const visibility = useSetProductVisibility();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [segment, setSegment] = useState('');
   const [page, setPage] = useState(0);
-  const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [toDelete, setToDelete] = useState<StaffProduct | null>(null);
 
   // Os livros têm a sua própria página.
-  const products = useMemo(() => (catalog.data?.products ?? []).filter((product) => !product.isBook), [catalog.data]);
+  const products = useMemo(() => (staffProducts.data ?? []).filter((product) => !product.isBook), [staffProducts.data]);
 
   const filtered = useMemo(() => {
     const terms = searchText(search).split(/\s+/).filter(Boolean);
@@ -92,7 +100,29 @@ export function BackofficeProductsPage() {
     });
   };
 
-  const count = (predicate: (product: Product) => boolean) => products.filter(predicate).length;
+  const toggleVisibility = (product: StaffProduct) => {
+    const show = product.hidden;
+    visibility.mutate(
+      { product, visible: show },
+      {
+        onSuccess: () =>
+          showToast(
+            show
+              ? `"${product.name}" voltou a estar visível na loja.`
+              : `"${product.name}" ficou oculto: já não aparece na loja nem pode ser encomendado.`,
+          ),
+        onError: (error) =>
+          showToast(
+            getApiErrorMessage(error, show ? 'Não foi possível mostrar o produto.' : 'Não foi possível ocultar o produto.'),
+            'error',
+          ),
+      },
+    );
+  };
+  const changingId = visibility.isPending ? visibility.variables?.product.id : undefined;
+
+  const count = (predicate: (product: StaffProduct) => boolean) => products.filter(predicate).length;
+  const hiddenCount = count((product) => product.hidden);
 
   return (
     <div className="backoffice-page">
@@ -112,24 +142,33 @@ export function BackofficeProductsPage() {
       </div>
 
       <div className="backoffice-body">
-        {catalog.isLoading ? (
+        {staffProducts.isLoading ? (
           <div className="backoffice-empty">
             <p>A carregar produtos…</p>
           </div>
-        ) : catalog.isError ? (
+        ) : staffProducts.isError ? (
           <div className="backoffice-empty">
-            <p>Não foi possível carregar os produtos.</p>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => catalog.refetch()}>
+            <p>{getApiErrorMessage(staffProducts.error, 'Não foi possível carregar os produtos.')}</p>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => staffProducts.refetch()}>
               Tentar novamente
             </button>
           </div>
         ) : (
           <>
-            <div className="backoffice-stats">
+            <div className="backoffice-stats backoffice-stats--produtos">
               <div className="stat-card">
-                <span className="stat-value">{products.length}</span>
-                <span className="stat-label">Produtos à venda</span>
+                <span className="stat-value">{products.length - hiddenCount}</span>
+                <span className="stat-label">Visíveis na loja</span>
               </div>
+              <button
+                type="button"
+                className={segment === 'oculto' ? 'stat-card stat-card--botao stat-card--activo' : 'stat-card stat-card--botao'}
+                aria-pressed={segment === 'oculto'}
+                onClick={() => setFilter(setSegment)(segment === 'oculto' ? '' : 'oculto')}
+              >
+                <span className="stat-value">{hiddenCount}</span>
+                <span className="stat-label">Ocultos na loja</span>
+              </button>
               <div className="stat-card">
                 <span className="stat-value">{count((product) => product.isCabaz)}</span>
                 <span className="stat-label">Cestas</span>
@@ -145,8 +184,11 @@ export function BackofficeProductsPage() {
             </div>
 
             <p className="backoffice-note">
-              Esta lista mostra os produtos disponíveis para venda, tal como a loja os vê. Os produtos marcados como
-              indisponíveis deixam de ser devolvidos pela API.
+              Para tirar um produto da loja sem o eliminar, use{' '}
+              <EyeOff size={14} aria-hidden="true" className="backoffice-note-icon" /> <strong>Ocultar da loja</strong>:
+              deixa de aparecer no catálogo, na pesquisa e nas categorias, sai dos carrinhos (com aviso ao cliente) e a
+              API recusa-o nas encomendas. Fica nesta lista, assinalado como Oculto, e volta à loja com{' '}
+              <Eye size={14} aria-hidden="true" className="backoffice-note-icon" /> <strong>Mostrar na loja</strong>.
             </p>
 
             <div className="backoffice-filters">
@@ -165,7 +207,9 @@ export function BackofficeProductsPage() {
                   value={categoryId}
                   onChange={setFilter(setCategoryId)}
                   placeholder="Todas as categorias"
-                  options={(catalog.data?.categories ?? []).map((category) => ({ value: category.id, label: category.name }))}
+                  options={categories
+                    .map((category) => ({ value: category.id, label: category.name }))
+                    .sort((a, b) => a.label.localeCompare(b.label, 'pt'))}
                 />
                 <Select value={segment} onChange={setFilter(setSegment)} placeholder="Todos" options={SEGMENTS} />
               </div>
@@ -189,8 +233,9 @@ export function BackofficeProductsPage() {
                     <tbody>
                       {visible.map((product) => {
                         const discount = discountPercent(product);
+                        const changing = changingId === product.id;
                         return (
-                          <tr key={product.id}>
+                          <tr key={product.id} className={product.hidden ? 'backoffice-row--oculto' : undefined}>
                             <td>
                               <Thumbnail title={product.name} src={product.image} className="backoffice-book-thumb" />
                             </td>
@@ -217,6 +262,12 @@ export function BackofficeProductsPage() {
                             </td>
                             <td>
                               <div className="backoffice-tags">
+                                {product.hidden && (
+                                  <span className="badge badge-gray backoffice-badge-oculto">
+                                    <EyeOff size={12} aria-hidden="true" />
+                                    Oculto
+                                  </span>
+                                )}
                                 {product.level && <span className="badge badge-yellow">Cesta {product.level}</span>}
                                 {!product.level && product.isCabaz && <span className="badge badge-yellow">Cesta</span>}
                                 {inCampaign(product, 'natal') && !product.isCabaz && <span className="badge badge-pink">Natal</span>}
@@ -228,6 +279,21 @@ export function BackofficeProductsPage() {
                             </td>
                             <td>
                               <div className="backoffice-actions">
+                                <button
+                                  type="button"
+                                  className={
+                                    product.hidden
+                                      ? 'backoffice-book-delete backoffice-visibility backoffice-visibility--oculto'
+                                      : 'backoffice-book-delete backoffice-visibility'
+                                  }
+                                  onClick={() => toggleVisibility(product)}
+                                  disabled={visibility.isPending}
+                                  aria-busy={changing || undefined}
+                                  aria-label={product.hidden ? `Mostrar ${product.name} na loja` : `Ocultar ${product.name} da loja`}
+                                  title={product.hidden ? 'Mostrar na loja' : 'Ocultar da loja'}
+                                >
+                                  {product.hidden ? <Eye size={16} /> : <EyeOff size={16} />}
+                                </button>
                                 <Link
                                   to={`/backoffice/produtos/${product.id}`}
                                   className="backoffice-book-delete"
@@ -259,8 +325,10 @@ export function BackofficeProductsPage() {
               <div className="backoffice-empty">
                 <p>
                   {products.length === 0
-                    ? 'Ainda não há produtos à venda. Comece por criar as cestas de Natal.'
-                    : 'Nenhum produto corresponde aos filtros.'}
+                    ? 'Ainda não há produtos. Comece por criar as cestas de Natal.'
+                    : segment === 'oculto' && hiddenCount === 0
+                      ? 'Não há produtos ocultos: todos aparecem na loja.'
+                      : 'Nenhum produto corresponde aos filtros.'}
                 </p>
               </div>
             )}
@@ -275,7 +343,7 @@ export function BackofficeProductsPage() {
         title="Eliminar produto"
         message={
           toDelete
-            ? `Retirar "${toDelete.name}" da loja? O produto fica como eliminado na API e deixa de aparecer no catálogo.`
+            ? `Eliminar "${toDelete.name}"? O produto fica como eliminado na API e sai também desta lista. Para o retirar só por algum tempo, prefira ocultá-lo.`
             : ''
         }
         confirmLabel="Eliminar"

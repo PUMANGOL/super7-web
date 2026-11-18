@@ -140,11 +140,20 @@ comprovativo é opcional no checkout: segue para `POST /order/{id}/payment-proof
 se ainda não houver, o cliente envia-o depois na página da encomenda.
 
 Com Multicaixa Express, a página da encomenda mostra um ponteiro com os 2 minutos para aceitar o pagamento no
-telemóvel (fica vermelho nos últimos 30 segundos). Se o pedido expirar ou for recusado, a encomenda continua
-reservada (24 horas, `app.payment.hold-hours` na API) e o cliente pede outro pagamento, para o mesmo ou outro
-telemóvel, ou muda para transferência bancária; com IBAN também pode passar a Express. Vale o primeiro pagamento
-confirmado (`POST /order/{id}/payment`). Acabada a reserva sem pagamento, a API cancela a encomenda e devolve o
-stock. Precisa de `order-tracking` e `checkout-options` em `api_features`.
+telemóvel (fica vermelho nos últimos 30 segundos; o título do separador também conta). A contagem segue a hora
+do servidor, medida pelo cabeçalho `Date` do próprio site (`src/utils/serverClock.ts`): um dispositivo com o
+relógio adiantado ou atrasado vê os mesmos 2 minutos. Assim que o tempo acaba, a página mostra o formulário para
+pedir outro pagamento, sem esperar que a API marque o pedido como expirado. A encomenda continua reservada
+(24 horas, `app.payment.hold-hours` na API) e o cliente pede outro pagamento, para o mesmo ou outro telemóvel, ou
+muda para transferência bancária; com IBAN também pode passar a Express. Vale o primeiro pagamento confirmado
+(`POST /order/{id}/payment`). Acabada a reserva sem pagamento, a API cancela a encomenda e devolve o stock. Precisa
+de `order-tracking` e `checkout-options` em `api_features`.
+
+A página da encomenda volta a perguntar o estado à API (de 5 em 5 segundos no Express, de 15 em 15 no IBAN). Quando
+o pagamento passa a confirmado com a página aberta, aparece a janela "Pago" (`PaidDialog.tsx`): um selo que carimba,
+com papelinhos, sem animação para quem pede menos movimento. Quem fez a encomenda neste browser vê estes passos
+mesmo com sessão iniciada no back-office; a equipa a ver a encomenda de outro cliente vê o tempo do Express a
+contar no cartão do pagamento.
 
 Enquanto a API não guardar estes dados, seguem também nas observações da encomenda (`notes`, até 500
 caracteres), uma informação por linha, para a loja os ver no back-office. **Até o backend tratar dos pagamentos
@@ -166,6 +175,12 @@ mostra o estado actual da API.
 
 O estado das encomendas segue o fluxo Pendente → Em Processamento → Pronto para Entrega → Entregue, com
 Cancelado possível antes de Entregue; cada mudança envia um e-mail ao cliente.
+
+Na lista de Produtos, o olho oculta um produto da loja sem o eliminar (`available=false`, gravado com
+`PUT /product/{id}` e os restantes dados tal como estão): sai do catálogo, da pesquisa, das categorias e dos
+carrinhos, e a API recusa-o nas encomendas. A lista pede também os ocultos
+(`GET /product/list?includeUnavailable=true`), assinala-os como Oculto e volta a mostrá-los com o mesmo botão; o
+cartão "Ocultos na loja" filtra-os. No formulário do produto é a opção "Visível na loja".
 
 ## Pedidos à equipa da API
 

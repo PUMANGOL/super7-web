@@ -313,10 +313,11 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
             <label className="add-book-checkbox">
               <input type="checkbox" checked={form.available} onChange={(e) => update('available', e.target.checked)} />
               <span>
-                Disponível para venda
+                Visível na loja
                 <small className="product-form-hint">
-                  Se desmarcar, o produto sai da loja e também desta lista (a API não devolve produtos indisponíveis).
-                  Para o retirar por pouco tempo, prefira pôr o stock a 0.
+                  Desmarque para ocultar o produto: deixa de aparecer na loja (catálogo, pesquisa e categorias) e não pode
+                  ser encomendado. Continua na lista de produtos do back-office, assinalado como Oculto, para o voltar a
+                  mostrar quando quiser.
                 </small>
               </span>
             </label>

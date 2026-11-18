@@ -1,18 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, unwrap } from '../../../api/client';
-import type { ApiProduct, ApiResponse } from '../../../types/api';
+import { fetchProductList } from '../../../api/products';
+import type { ApiProduct } from '../../../types/api';
+import { useServerNow } from '../../../utils/serverClock';
 
-/** Hora actual, actualizada a cada `intervalMs`. */
+/** Hora actual (do servidor: os prazos vêm da API), actualizada a cada `intervalMs`. */
 export function useNow(intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(timer);
-  }, [intervalMs]);
-
-  return now;
+  return useServerNow(intervalMs);
 }
 
 /** Largura (px) do elemento, seguida com ResizeObserver. Use o primeiro valor como `ref`. */
@@ -32,11 +26,8 @@ export function useElementWidth<T extends HTMLElement>(): [(node: T | null) => (
 }
 
 /** `GET /product/list?includeUnavailable=true`: só ADMIN e MANAGER (os outros perfis recebem 403). */
-async function fetchProductsIncludingUnavailable(): Promise<ApiProduct[]> {
-  const { data } = await apiClient.get<ApiResponse<ApiProduct[]>>('/product/list', {
-    params: { includeUnavailable: true },
-  });
-  return unwrap(data) ?? [];
+function fetchProductsIncludingUnavailable(): Promise<ApiProduct[]> {
+  return fetchProductList({ includeUnavailable: true });
 }
 
 /**
