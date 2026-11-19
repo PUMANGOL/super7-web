@@ -8,7 +8,30 @@ interface CountdownProps {
   label: string;
 }
 
-/** Contagem decrescente do hero (dias, horas, minutos). Desaparece quando o prazo passa. */
+type Digito = number | '–';
+
+/** Número que rola quando muda: o valor antigo sai por cima e o novo entra por baixo (super7-hero.css). */
+function Rolo({ value }: { value: Digito }) {
+  const [estado, setEstado] = useState<{ value: Digito; anterior: Digito | null }>({ value, anterior: null });
+  if (estado.value !== value) setEstado({ value, anterior: estado.value });
+  // O primeiro valor real (depois do "–") aparece sem rolar.
+  const rola = estado.anterior !== null && estado.anterior !== '–';
+
+  return (
+    <b>
+      {rola && (
+        <span key={`sai-${estado.anterior}`} className="s7-contagem__sai" aria-hidden="true">
+          {estado.anterior}
+        </span>
+      )}
+      <span key={`entra-${estado.value}`} className={rola ? 's7-contagem__entra' : undefined}>
+        {estado.value}
+      </span>
+    </b>
+  );
+}
+
+/** Contagem decrescente do hero (dias, horas, minutos e segundos). Desaparece quando o prazo passa. */
 export function Countdown({ until, label }: CountdownProps) {
   const deadline = new Date(until).getTime();
   const [now, setNow] = useState<number | null>(null);
@@ -16,7 +39,7 @@ export function Countdown({ until, label }: CountdownProps) {
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const first = window.setTimeout(tick, 0);
-    const interval = window.setInterval(tick, 30_000);
+    const interval = window.setInterval(tick, 1000);
     return () => {
       window.clearTimeout(first);
       window.clearInterval(interval);
@@ -26,11 +49,12 @@ export function Countdown({ until, label }: CountdownProps) {
   const remaining = now === null ? null : deadline - now;
   if (Number.isNaN(deadline) || (remaining !== null && remaining <= 0)) return null;
 
-  const minutes = remaining === null ? null : Math.floor(remaining / 60_000);
-  const blocks = [
-    { value: minutes === null ? '–' : Math.floor(minutes / 1440), unit: 'dias' },
-    { value: minutes === null ? '–' : Math.floor((minutes % 1440) / 60), unit: 'horas' },
-    { value: minutes === null ? '–' : minutes % 60, unit: 'min' },
+  const seconds = remaining === null ? null : Math.floor(remaining / 1000);
+  const blocks: { value: Digito; unit: string }[] = [
+    { value: seconds === null ? '–' : Math.floor(seconds / 86_400), unit: 'dias' },
+    { value: seconds === null ? '–' : Math.floor((seconds % 86_400) / 3600), unit: 'horas' },
+    { value: seconds === null ? '–' : Math.floor((seconds % 3600) / 60), unit: 'min' },
+    { value: seconds === null ? '–' : seconds % 60, unit: 'seg' },
   ];
 
   return (
@@ -44,7 +68,7 @@ export function Countdown({ until, label }: CountdownProps) {
       <div className="s7-contagem__blocos" role="timer" aria-live="off">
         {blocks.map((block) => (
           <p className="s7-contagem__bloco" key={block.unit}>
-            <b>{block.value}</b>
+            <Rolo value={block.value} />
             <span>{block.unit}</span>
           </p>
         ))}

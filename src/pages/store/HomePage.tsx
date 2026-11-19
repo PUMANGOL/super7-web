@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useRef, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import lojaAtendimento from '../../assets/img/loja-atendimento.webp';
 import lojaEquipa from '../../assets/img/loja-equipa.webp';
@@ -14,6 +14,7 @@ import { HeroCabazes } from '../../components/store/HeroCabazes';
 import { CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
 import { ProductCard, ProductCardSkeleton, ProductGrid } from '../../components/store/ProductCard';
+import { useContagemAte, useHeroMotion } from '../../components/store/useHeroMotion';
 import type { Campaign } from '../../config/store';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { formatKz, plural } from '../../utils/format';
@@ -51,13 +52,62 @@ interface ChristmasHeroProps {
   showClearance: boolean;
 }
 
+/** Estrelas que cintilam no fundo do hero: posição, tamanho, duração, atraso e cor (o resto é dourado). */
+const BRILHOS: { x: number; y: number; t: number; d: number; a: number; branco?: boolean }[] = [
+  { x: 4, y: 14, t: 9, d: 4.2, a: 0.4 },
+  { x: 17, y: 6, t: 6, d: 3.6, a: 2.1, branco: true },
+  { x: 31, y: 88, t: 8, d: 4.8, a: 1.2 },
+  { x: 44, y: 9, t: 7, d: 3.9, a: 3.0 },
+  { x: 49, y: 63, t: 5, d: 3.4, a: 0.9, branco: true },
+  { x: 55, y: 22, t: 10, d: 5.2, a: 1.7 },
+  { x: 61, y: 90, t: 6, d: 4.0, a: 2.6, branco: true },
+  { x: 70, y: 7, t: 8, d: 4.6, a: 0.2 },
+  { x: 83, y: 12, t: 6, d: 3.7, a: 1.5, branco: true },
+  { x: 93, y: 30, t: 11, d: 5.0, a: 2.4 },
+  { x: 96, y: 74, t: 7, d: 4.3, a: 0.7 },
+  { x: 88, y: 92, t: 5, d: 3.5, a: 3.3, branco: true },
+  { x: 2, y: 70, t: 7, d: 4.4, a: 1.9 },
+  { x: 24, y: 40, t: 5, d: 3.8, a: 2.9, branco: true },
+];
+
+/** Texto da fita do disco, repetido duas vezes para o marquee dar a volta sem salto. */
+const FITA = Array.from({ length: 6 }, (_, index) => (index % 2 === 0 ? 'Boas Festas' : 'Super7'));
+
+function SeloPreco({ value }: { value: number }) {
+  const shown = useContagemAte(value, 1000, 1100);
+  return (
+    <p className="s7-hero__selo">
+      <small>Desde</small>
+      <b>
+        <span aria-hidden="true">{formatKz(shown)}</span>
+        <span className="s7-sr">{formatKz(value)}</span>
+      </b>
+    </p>
+  );
+}
+
 function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: ChristmasHeroProps) {
   const year = campaign.endsOn.slice(0, 4);
   // O nome vindo de GET /campaign pode já trazer o ano ("Boas Festas 2026").
   const title = campaign.name.includes(year) ? campaign.name : `${campaign.name} ${year}`;
+  const heroRef = useRef<HTMLElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  useHeroMotion(heroRef, sceneRef);
+
+  const word = (index: number) => ({ '--p': index }) as CSSProperties;
 
   return (
-    <section className="s7-hero" aria-labelledby="s7-hero-titulo">
+    <section className="s7-hero s7-hero--natal" aria-labelledby="s7-hero-titulo" ref={heroRef}>
+      <div className="s7-hero__brilhos" aria-hidden="true">
+        {BRILHOS.map((brilho, index) => (
+          <i
+            key={index}
+            className={brilho.branco ? 's7-hero__brilho--branco' : undefined}
+            style={{ left: `${brilho.x}%`, top: `${brilho.y}%`, '--t': `${brilho.t}px`, '--d': `${brilho.d}s`, '--a': `${brilho.a}s` } as CSSProperties}
+          />
+        ))}
+      </div>
+
       <div className="s7-contentor s7-hero__in">
         <div className="s7-hero__texto">
           <p className="s7-hero__chapa">
@@ -65,7 +115,11 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
             {title}
           </p>
           <h1 id="s7-hero-titulo">
-            Este Natal, ofereça uma <em>cesta Super7</em>
+            <span className="s7-hero__palavra" style={word(0)}>Este</span>{' '}
+            <span className="s7-hero__palavra" style={word(1)}>Natal,</span>{' '}
+            <span className="s7-hero__palavra" style={word(2)}>ofereça</span>{' '}
+            <span className="s7-hero__palavra" style={word(3)}>uma</span>{' '}
+            <em className="s7-hero__palavra" style={word(4)}>cesta Super7</em>
           </h1>
           <p className="s7-hero__intro">
             Cestas prontas a oferecer a clientes, colaboradores e família. Encomende online e levante na loja
@@ -73,12 +127,12 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
           </p>
           <div className="s7-hero__accoes">
             <a className="s7-btn s7-btn--campanha s7-btn--grande" href="#cabazes">
-              Escolher cesta
+              <span>Escolher cesta</span>
               <Icon name="seta" />
             </a>
             {showClearance && (
               <a className="s7-btn s7-btn--claro s7-btn--grande" href="#escoamento">
-                Ver escoamento
+                <span>Ver escoamento</span>
               </a>
             )}
           </div>
@@ -86,20 +140,34 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
         </div>
 
         <div className="s7-hero__palco">
-          <div className="s7-hero__disco" aria-hidden="true">
-            <div className="s7-hero__fita">
-              <span>Boas Festas</span><span>✦</span><span>Super7</span><span>✦</span>
-              <span>Boas Festas</span><span>✦</span><span>Super7</span><span>✦</span>
-              <span>Boas Festas</span><span>✦</span><span>Super7</span>
+          {/* Cena 3D: cada camada tem a sua profundidade e roda com o rato (super7-hero.css, useHeroMotion). */}
+          <div className="s7-hero__cena" ref={sceneRef}>
+            <div className="s7-hero__aneis" aria-hidden="true" />
+            <div className="s7-hero__orbita" aria-hidden="true">
+              <i />
+              <i />
+              <i />
             </div>
+            <div className="s7-hero__disco" aria-hidden="true">
+              <div className="s7-hero__fita">
+                <div className="s7-hero__fita-pista">
+                  {[...FITA, ...FITA].map((text, index) => (
+                    <Fragment key={index}>
+                      <span>{text}</span>
+                      <span>✦</span>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="s7-hero__sombra" aria-hidden="true" />
+            <HeroCabazes cabazes={cabazes} />
+            {fromPrice !== null && (
+              <div className="s7-hero__camada-selo">
+                <SeloPreco value={fromPrice} />
+              </div>
+            )}
           </div>
-          <HeroCabazes cabazes={cabazes} />
-          {fromPrice !== null && (
-            <p className="s7-hero__selo">
-              <small>Desde</small>
-              <b>{formatKz(fromPrice)}</b>
-            </p>
-          )}
         </div>
       </div>
     </section>

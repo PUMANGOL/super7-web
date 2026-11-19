@@ -1,0 +1,559 @@
+/* ==========================================================================
+   Hero da campanha de Natal — movimento "Profundidade"
+   A montra é uma cena 3D: cada camada tem a sua profundidade (translateZ) e a cena
+   roda com o rato e inclina com o scroll (variáveis --s7h-* postas por useHeroMotion.ts).
+   Cada camada leva a escala que anula a perspectiva, por isso parada fica igual ao layout.
+   O efeito ao passar o rato nas cestas (HeroCabazes, super7-ajustes.css §7) não muda.
+   Só transform, translate, scale, rotate, opacity e filter. Com "reduzir movimento" fica parado.
+   ========================================================================== */
+
+.s7-hero--natal {
+  --s7h-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --s7h-mola: cubic-bezier(0.34, 1.56, 0.64, 1);
+  isolation: isolate;
+  /* Os pontos passam para uma camada própria (::before), para o parallax */
+  background:
+    radial-gradient(60% 80% at 78% 55%, rgba(242, 182, 60, 0.16), transparent 70%),
+    var(--s7-verde-noite);
+}
+
+/* 1 · Fundo: pontos em parallax, estrelas a cintilar e um foco de luz que segue o rato */
+.s7-hero--natal::before {
+  content: '';
+  position: absolute;
+  inset: -140px 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.2) 0 1px, transparent 1.5px) 0 0 / 58px 58px,
+    radial-gradient(circle at 70% 64%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1.5px) 0 0 / 82px 82px;
+  translate: 0 calc(var(--s7h-sp, 0) * 130px);
+  pointer-events: none;
+}
+.s7-hero--natal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(420px circle at var(--s7h-mx, 70%) var(--s7h-my, 40%), rgba(246, 200, 95, 0.13), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .s7-hero--natal:hover::after {
+    opacity: 1;
+  }
+}
+
+.s7-hero__brilhos {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  translate: 0 calc(var(--s7h-sp, 0) * -90px);
+  pointer-events: none;
+}
+.s7-hero__brilhos i {
+  position: absolute;
+  width: var(--t, 8px);
+  aspect-ratio: 1;
+  background: #f6c85f;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0;
+  animation: s7h-cintila var(--d, 4s) ease-in-out var(--a, 0s) infinite;
+}
+.s7-hero__brilhos .s7-hero__brilho--branco {
+  background: #fff;
+}
+@keyframes s7h-cintila {
+  0%,
+  100% {
+    opacity: 0;
+    scale: 0.3;
+    rotate: 0deg;
+  }
+  50% {
+    opacity: 0.85;
+    scale: 1;
+    rotate: 90deg;
+  }
+}
+
+/* 2 · Texto: entra de lado, a focar; o título entra palavra a palavra */
+.s7-hero--natal .s7-hero__texto > * {
+  animation: s7h-entra 0.95s var(--s7h-ease) both;
+  animation-delay: calc(var(--i, 0) * 100ms + 150ms);
+}
+.s7-hero--natal .s7-hero__texto > :nth-child(2) {
+  --i: 1;
+  animation: none;
+}
+.s7-hero--natal .s7-hero__texto > :nth-child(3) {
+  --i: 4;
+}
+.s7-hero--natal .s7-hero__texto > :nth-child(4) {
+  --i: 5;
+}
+.s7-hero--natal .s7-hero__texto > :nth-child(5) {
+  --i: 6;
+}
+@keyframes s7h-entra {
+  from {
+    opacity: 0;
+    translate: -36px 0;
+    filter: blur(8px);
+  }
+}
+
+.s7-hero__palavra {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: s7h-palavra 0.9s var(--s7h-ease) both;
+  animation-delay: calc(var(--p, 0) * 85ms + 260ms);
+}
+@keyframes s7h-palavra {
+  from {
+    opacity: 0;
+    transform: perspective(600px) translateY(0.45em) rotateX(-75deg);
+    filter: blur(10px);
+  }
+}
+
+/* "cesta Super7": reflexo dourado que passa de vez em quando e um traço que se desenha por baixo */
+.s7-hero--natal h1 em {
+  position: relative;
+  /* Folga para a inclinação do itálico e para a perna do "p" não serem cortadas pelo recorte do texto */
+  padding: 0.08em 0.1em 0.12em 0;
+  margin: -0.08em -0.1em -0.12em 0;
+  animation:
+    s7h-palavra 0.9s var(--s7h-ease) both calc(var(--p, 0) * 85ms + 260ms),
+    s7h-reluz 5.5s ease-in-out 2.4s infinite;
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .s7-hero--natal h1 em {
+    /* Entre 100% e 0% o gradiente cobre sempre a palavra toda; a cor de baixo garante que nada fica transparente */
+    background: linear-gradient(100deg, #f6c85f 0 40%, #fff7da 50%, #f6c85f 60% 100%) 100% 0 / 260% 100% no-repeat #f6c85f;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+.s7-hero--natal h1 em::after {
+  content: '';
+  position: absolute;
+  left: 0.04em;
+  right: 0.14em;
+  bottom: 0.04em;
+  height: 0.07em;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--s7-vermelho), #f6c85f);
+  transform-origin: 0 50%;
+  animation: s7h-traco 0.8s var(--s7h-ease) 1.15s both;
+}
+@keyframes s7h-reluz {
+  0%,
+  55% {
+    background-position: 100% 0;
+  }
+  85%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+@keyframes s7h-traco {
+  from {
+    scale: 0 1;
+  }
+}
+
+/* Chapa da campanha: um brilho atravessa-a e o presente abana */
+.s7-hero--natal .s7-hero__chapa {
+  position: relative;
+  overflow: hidden;
+}
+.s7-hero--natal .s7-hero__chapa::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  translate: -120% 0;
+  animation: s7h-lampejo 4.5s ease-in-out 1.6s infinite;
+  pointer-events: none;
+}
+.s7-hero--natal .s7-hero__chapa .s7-ico {
+  transform-origin: 50% 80%;
+  animation: s7h-abana 4.5s ease-in-out 1.6s infinite;
+}
+@keyframes s7h-lampejo {
+  0%,
+  60% {
+    translate: -120% 0;
+  }
+  85%,
+  100% {
+    translate: 120% 0;
+  }
+}
+@keyframes s7h-abana {
+  0%,
+  62%,
+  84%,
+  100% {
+    rotate: 0deg;
+  }
+  66% {
+    rotate: -14deg;
+  }
+  70% {
+    rotate: 12deg;
+  }
+  74% {
+    rotate: -8deg;
+  }
+  78% {
+    rotate: 4deg;
+  }
+}
+
+/* 3 · Botões magnéticos (--s7h-bx/--s7h-by vêm de useHeroMotion); o principal chama a atenção */
+.s7-hero--natal .s7-hero__accoes .s7-btn {
+  translate: var(--s7h-bx, 0px) var(--s7h-by, 0px);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    scale 0.12s,
+    translate 0.4s var(--s7h-mola),
+    box-shadow 0.3s var(--s7h-ease),
+    background-position 0.7s var(--s7h-ease);
+}
+.s7-hero--natal .s7-hero__accoes .s7-btn > * {
+  translate: calc(var(--s7h-bx, 0px) * 0.35) calc(var(--s7h-by, 0px) * 0.35);
+  transition: translate 0.4s var(--s7h-mola);
+}
+.s7-hero--natal .s7-btn--campanha {
+  background-image: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.3) 50%, transparent 62%);
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  background-repeat: no-repeat;
+  animation: s7h-chama 4s ease-out 2.6s infinite;
+}
+.s7-hero--natal .s7-btn--campanha:hover {
+  background-position: -30% 0;
+  box-shadow: 0 14px 30px rgba(222, 24, 39, 0.45);
+  animation: none;
+}
+@keyframes s7h-chama {
+  0% {
+    box-shadow: 0 0 0 0 rgba(222, 24, 39, 0.55);
+  }
+  40%,
+  100% {
+    box-shadow: 0 0 0 16px rgba(222, 24, 39, 0);
+  }
+}
+
+/* 4 · Contagem: os blocos entram a saltar e os números rolam (Countdown.tsx) */
+.s7-hero--natal .s7-contagem__bloco {
+  animation: s7h-bloco 0.6s var(--s7h-mola) both;
+}
+.s7-hero--natal .s7-contagem__bloco:nth-child(1) {
+  animation-delay: 0.85s;
+}
+.s7-hero--natal .s7-contagem__bloco:nth-child(2) {
+  animation-delay: 0.93s;
+}
+.s7-hero--natal .s7-contagem__bloco:nth-child(3) {
+  animation-delay: 1.01s;
+}
+.s7-hero--natal .s7-contagem__bloco:nth-child(4) {
+  animation-delay: 1.09s;
+}
+@keyframes s7h-bloco {
+  from {
+    opacity: 0;
+    scale: 0.6;
+    translate: 0 12px;
+  }
+}
+
+.s7-contagem__bloco b {
+  display: grid;
+  justify-items: center;
+  overflow: hidden;
+  perspective: 220px;
+}
+.s7-contagem__bloco b > span {
+  grid-area: 1 / 1;
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+.s7-contagem__entra {
+  animation: s7h-rolo-entra 0.5s var(--s7h-ease, ease-out) both;
+}
+.s7-contagem__sai {
+  animation: s7h-rolo-sai 0.5s var(--s7h-ease, ease-out) forwards;
+}
+@keyframes s7h-rolo-entra {
+  from {
+    opacity: 0;
+    transform: translateY(105%) rotateX(-70deg);
+  }
+}
+@keyframes s7h-rolo-sai {
+  to {
+    opacity: 0;
+    transform: translateY(-105%) rotateX(70deg);
+  }
+}
+
+/* 5 · Montra em 3D: perspectiva de 1100px, centrada no disco */
+.s7-hero--natal .s7-hero__palco {
+  perspective: 1100px;
+  perspective-origin: 50% 53%;
+}
+.s7-hero__cena {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--s7h-ry, 0) * 1deg)) rotateY(calc(var(--s7h-rx, 0) * 1deg));
+  will-change: transform;
+}
+
+/* Anéis de luz atrás do disco (z −90) */
+.s7-hero__aneis {
+  position: absolute;
+  inset: 6% 6% 0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 10px rgba(255, 255, 255, 0.06),
+    0 0 0 26px rgba(255, 255, 255, 0.04);
+  transform: translateZ(-90px) scale(1.0818);
+  animation: s7h-fundo 1.4s var(--s7h-ease) 0.1s both;
+}
+.s7-hero--natal .s7-hero__disco {
+  box-shadow: none;
+  animation: s7h-fundo 1.4s var(--s7h-ease) 0.22s both;
+}
+
+/* Órbita com três enfeites, a girar devagar (z −40) */
+.s7-hero__orbita {
+  position: absolute;
+  inset: 6% 6% 0;
+  margin: -6.5%;
+  border: 1.5px dashed rgba(246, 200, 95, 0.34);
+  border-radius: 50%;
+  transform: translateZ(-40px) scale(1.0364);
+  animation:
+    s7h-aparece 1.2s ease 0.5s both,
+    s7h-gira 60s linear infinite;
+}
+.s7-hero__orbita i {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px;
+  border-radius: 50%;
+  background: #f6c85f;
+  box-shadow: 0 0 14px rgba(246, 200, 95, 0.9);
+  animation: s7h-pulsa 2.6s ease-in-out infinite;
+}
+.s7-hero__orbita i:nth-child(1) {
+  left: 96.36%;
+  top: 68.73%;
+}
+.s7-hero__orbita i:nth-child(2) {
+  left: 7.6%;
+  top: 76.5%;
+  background: var(--s7-vermelho);
+  box-shadow: 0 0 14px rgba(222, 24, 39, 0.9);
+  animation-delay: -0.9s;
+}
+.s7-hero__orbita i:nth-child(3) {
+  left: 43.04%;
+  top: 0.49%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  background: #fff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+  animation-delay: -1.7s;
+}
+@keyframes s7h-gira {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes s7h-pulsa {
+  50% {
+    scale: 1.35;
+  }
+}
+@keyframes s7h-aparece {
+  from {
+    opacity: 0;
+  }
+}
+/* As camadas do fundo chegam de longe, uma a uma */
+@keyframes s7h-fundo {
+  from {
+    opacity: 0;
+    translate: 0 0 -700px;
+  }
+}
+
+/* Reflexo de luz no disco, que acompanha a rotação */
+.s7-hero--natal .s7-hero__disco::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at calc(50% - var(--s7h-rx, 0) * 3.5%) calc(38% + var(--s7h-ry, 0) * 3.5%),
+    rgba(255, 255, 255, 0.75),
+    transparent 58%
+  );
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+/* Fita em marquee: a pista tem o texto duas vezes e anda metade da largura */
+.s7-hero--natal .s7-hero__fita {
+  justify-content: flex-start;
+}
+.s7-hero__fita-pista {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 28px;
+  width: max-content;
+  padding-right: 28px;
+  animation: s7h-fita 30s linear infinite;
+}
+@keyframes s7h-fita {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* Sombra das cestas no chão (z 40); a origem é o centro da perspectiva */
+.s7-hero__sombra {
+  position: absolute;
+  left: 14%;
+  right: 6%;
+  bottom: -2%;
+  height: 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.42), transparent);
+  filter: blur(4px);
+  transform-origin: 45% -512.5%;
+  transform: translateZ(40px) scale(0.9636);
+  animation: s7h-aparece 1s ease 1s both;
+  pointer-events: none;
+}
+
+/* Cestas (z 80): chegam de baixo uma a uma e flutuam. O hover continua na fotografia. */
+.s7-hero--natal .s7-hero__cabazes {
+  transform-origin: 50% 53%;
+  transform: translateZ(80px) scale(0.9273);
+  animation: s7h-flutua 7s ease-in-out 2.2s infinite;
+}
+.s7-hero--natal .s7-hero__cabaz {
+  transform-origin: 50% 100%;
+  animation: s7h-cesta 1.2s var(--s7h-ease) both;
+}
+.s7-hero--natal .s7-hero__cabaz--prata {
+  animation-delay: 0.55s;
+}
+.s7-hero--natal .s7-hero__cabaz--bronze {
+  animation-delay: 0.68s;
+}
+.s7-hero--natal .s7-hero__cabaz--ouro {
+  animation-delay: 0.82s;
+}
+@keyframes s7h-cesta {
+  from {
+    opacity: 0;
+    translate: 0 60px;
+    scale: 0.7;
+  }
+}
+@keyframes s7h-flutua {
+  0%,
+  100% {
+    translate: 0 0 0;
+  }
+  50% {
+    translate: 0 -7px 18px;
+  }
+}
+
+/* Selo do preço, à frente de tudo (z 150): aproxima-se, conta até ao preço e balança */
+.s7-hero__camada-selo {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 53%;
+  transform: translateZ(150px) scale(0.8636);
+  pointer-events: none;
+}
+.s7-hero--natal .s7-hero__selo {
+  animation:
+    s7h-selo 1.1s var(--s7h-mola) 0.9s both,
+    s7h-balanca 5.5s ease-in-out 2.3s infinite;
+}
+.s7-hero--natal .s7-hero__selo b {
+  font-variant-numeric: tabular-nums;
+}
+.s7-hero--natal .s7-hero__selo::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border: 1.5px dashed rgba(246, 200, 95, 0.7);
+  border-radius: 50%;
+  animation: s7h-gira 24s linear infinite;
+}
+@keyframes s7h-selo {
+  from {
+    opacity: 0;
+    translate: 0 70px;
+    scale: 0.4;
+  }
+}
+@keyframes s7h-balanca {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+/* 6 · Scroll: o texto sobe e desvanece e a montra desce (só lado a lado; empilhado fica quieto) */
+@media (min-width: 901px) {
+  .s7-hero--natal .s7-hero__texto {
+    translate: 0 calc(var(--s7h-sp, 0) * -56px);
+    opacity: calc(1.8 - var(--s7h-sp, 0) * 2.2);
+  }
+  .s7-hero--natal .s7-hero__palco {
+    translate: 0 calc(var(--s7h-sp, 0) * 70px);
+  }
+}
+
+/* Acessibilidade: com "reduzir movimento" fica tudo parado, na posição final */
+@media (prefers-reduced-motion: reduce) {
+  .s7-hero--natal,
+  .s7-hero--natal *,
+  .s7-hero--natal *::before,
+  .s7-hero--natal *::after,
+  .s7-hero--natal::before,
+  .s7-hero--natal::after {
+    animation: none !important;
+  }
+  .s7-hero__brilhos i {
+    opacity: 0.5;
+  }
+  .s7-contagem__sai {
+    display: none;
+  }
+}
