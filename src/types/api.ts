@@ -63,6 +63,8 @@ export interface ProductStoreFields {
   hamperItems?: HamperItem[] | null;
   /** Destaque na página inicial. */
   featured?: boolean | null;
+  /** Selo "Stock limitado" na loja. */
+  limitedStock?: boolean | null;
 }
 
 export interface ApiProduct extends ProductStoreFields {
@@ -130,6 +132,8 @@ export interface ApiCheckoutOptions {
   fixedPickupPostId?: UUID | null;
   /** Dados da transferência bancária; null quando o IBAN não está activo. */
   bankTransfer?: BankTransferDetails | null;
+  /** Tema de Natal na loja (adereços natalícios); só se vê durante a campanha de Natal. */
+  christmasTheme?: boolean;
 }
 
 /** Definições da loja (back-office): `GET /settings` e `PUT /settings`. */
@@ -145,6 +149,8 @@ export interface StoreSettings {
   iban: string | null;
   ibanHolder: string | null;
   ibanBank: string | null;
+  /** Tema de Natal na loja. Ausente na resposta = a API ainda não guarda esta opção. */
+  christmasTheme?: boolean;
   /** Só na resposta: quando e por quem (e-mail) foram alteradas pela última vez. */
   updatedAt?: string | null;
   updatedBy?: string | null;

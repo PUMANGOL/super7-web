@@ -43,6 +43,8 @@ export interface Product {
   campaigns: CampaignId[];
   image: string | null;
   featured: boolean;
+  /** Selo "Stock limitado" (back-office, junto ao stock do produto). */
+  limitedStock: boolean;
   level: CabazLevel | null;
   badge: string;
   items: CabazItem[];

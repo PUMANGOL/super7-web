@@ -3,7 +3,9 @@ import { discountPercent, inCampaign, isInStock, productPath } from '../../catal
 import type { Product } from '../../catalog/types';
 import { useAddToCart } from '../../hooks/useAddToCart';
 import { Icon } from './Icon';
-import { Price, ProductImage, StockBar } from './ProductBits';
+import { Azevinho } from './natal/Aderecos';
+import { useTemaNatal } from './natal/tema';
+import { CabazStock, LimitedStockBadge, Price, ProductImage, StockBar } from './ProductBits';
 
 function CardTag({ product }: { product: Product }) {
   if (!isInStock(product)) return <span className="s7-etiqueta s7-etiqueta--esgotado">Esgotado</span>;
@@ -17,6 +19,7 @@ function CardTag({ product }: { product: Product }) {
 /** Cartão de produto (`s7-produto`): toda a área abre o detalhe; o botão junta ao carrinho. */
 export function ProductCard({ product }: { product: Product }) {
   const addToCart = useAddToCart();
+  const temaNatal = useTemaNatal();
   const available = isInStock(product);
 
   return (
@@ -24,7 +27,9 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="s7-produto__media">
         <div className="s7-produto__etiquetas">
           <CardTag product={product} />
+          {available && product.limitedStock && <LimitedStockBadge />}
         </div>
+        {temaNatal && product.isCabaz && <Azevinho className="s7-produto__azevinho" />}
         <ProductImage product={product} size={400} width={400} height={300} alt="" />
       </div>
       <div className="s7-produto__corpo">
@@ -33,8 +38,13 @@ export function ProductCard({ product }: { product: Product }) {
           <Link to={productPath(product)}>{product.name}</Link>
         </h3>
         {product.format && <p className="s7-produto__formato">{product.format}</p>}
-        {product.showStock && available && product.stock !== null && !inCampaign(product, 'escoamento') && (
-          <p className="s7-produto__stock">{product.stock} em stock</p>
+        {product.isCabaz ? (
+          <CabazStock product={product} />
+        ) : (
+          product.showStock &&
+          available &&
+          product.stock !== null &&
+          !inCampaign(product, 'escoamento') && <p className="s7-produto__stock">{product.stock} em stock</p>
         )}
         <StockBar product={product} />
         <div className="s7-produto__rodape">

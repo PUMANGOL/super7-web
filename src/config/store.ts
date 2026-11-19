@@ -102,6 +102,8 @@ export const PRODUCT_ATTRIBUTES = {
   item: 'item',
   /** "sim" para aparecer nos destaques da página inicial. */
   featured: 'destaque',
+  /** "sim" para mostrar o selo "Stock limitado" nos cartões e na página do produto. */
+  limitedStock: 'stock_limitado',
 } as const;
 
 export const STORE = {
@@ -198,6 +200,8 @@ export interface CheckoutOptions {
   pickup: { mode: PickupMode; fixedPostId: string | null };
   /** Dados da transferência; null se o IBAN não estiver activo. */
   bankTransfer: BankTransferDetails | null;
+  /** Tema de Natal (adereços natalícios). `null`: a API não diz; vale `CHRISTMAS_THEME_DEFAULT`. */
+  christmasTheme: boolean | null;
 }
 
 /**
@@ -212,7 +216,14 @@ export const DEFAULT_CHECKOUT_OPTIONS: CheckoutOptions = {
   giftMessageMaxLength: 240,
   pickup: { mode: 'CUSTOMER_CHOICE', fixedPostId: null },
   bankTransfer: null,
+  christmasTheme: null,
 };
+
+/**
+ * Tema de Natal quando a API não o indica (sem `checkout-options` ou com uma API anterior à opção):
+ * ligado durante a campanha de Natal. Com a API nova, liga-se e desliga-se no back-office (Definições da loja).
+ */
+export const CHRISTMAS_THEME_DEFAULT = true;
 
 /** Limites dos campos do checkout. `notes` é o limite da API para as observações. */
 export const CHECKOUT_LIMITS = {

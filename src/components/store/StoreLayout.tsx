@@ -1,7 +1,9 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
 import { NoticeProvider } from '../../context/NoticeProvider';
+import { resolveTemaNatal, TemaNatalContext } from './natal/tema';
 import { useCartSync } from '../../hooks/useCartDetail';
 import { Footer } from './Footer';
 import { Header } from './Header';
@@ -85,16 +87,22 @@ function StoreShell() {
   useCartSync();
   useScrollOnNavigate();
   usePageTransitions();
+  const { search } = useLocation();
+  const natalActive = useCampaigns().isActive('natal');
+  const setting = useCheckoutOptions().options.christmasTheme;
+  const temaNatal = useMemo(() => resolveTemaNatal(natalActive, setting, search), [natalActive, setting, search]);
 
   return (
-    <div className="s7-loja">
-      <a className="s7-saltar" href="#conteudo">
-        Saltar para o conteúdo
-      </a>
-      <Header />
-      <Outlet />
-      <Footer />
-    </div>
+    <TemaNatalContext.Provider value={temaNatal}>
+      <div className={temaNatal ? 's7-loja s7-loja--natal' : 's7-loja'}>
+        <a className="s7-saltar" href="#conteudo">
+          Saltar para o conteúdo
+        </a>
+        <Header />
+        <Outlet />
+        <Footer />
+      </div>
+    </TemaNatalContext.Provider>
   );
 }
 

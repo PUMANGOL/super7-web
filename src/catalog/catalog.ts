@@ -82,6 +82,7 @@ export function mapProduct(api: ApiProduct, context: MapContext): Product {
     campaigns,
     image: api.coverImage?.trim() || null,
     featured: attributes.featured,
+    limitedStock: attributes.limitedStock,
     level: attributes.level,
     badge: attributes.badge,
     items,

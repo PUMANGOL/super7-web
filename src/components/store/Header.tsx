@@ -8,13 +8,19 @@ import { useCampaigns } from '../../catalog/useStoreSettings';
 import { useCart } from '../../context/cart';
 import { plural } from '../../utils/format';
 import { Icon } from './Icon';
+import { Azevinho, Gorro } from './natal/Aderecos';
+import { useTemaNatal } from './natal/tema';
 
-/** Logótipo oficial do Super7 (versão branca, `light`, para fundos escuros) seguido de "digital". */
-export function Logo({ light = false }: { light?: boolean }) {
+/**
+ * Logótipo oficial do Super7 (versão branca, `light`, para fundos escuros) seguido de "digital".
+ * `hat`: gorro do Pai Natal no "S" (tema de Natal).
+ */
+export function Logo({ light = false, hat = false }: { light?: boolean; hat?: boolean }) {
   return (
     <Link className={light ? 's7-logo s7-logo--claro' : 's7-logo'} to="/" aria-label="Super7 Digital, página inicial">
       <img className="s7-logo__img" src={light ? logoSuper7Branco : logoSuper7} alt="" width={446} height={160} />
       <span className="s7-logo__digital">digital</span>
+      {hat && <Gorro className="s7-logo__gorro" />}
     </Link>
   );
 }
@@ -196,6 +202,7 @@ export function Header() {
   const current = (active: boolean) => (active ? ('page' as const) : undefined);
   // Uma campanha activa só aparece no menu se tiver produtos (enquanto o catálogo carrega, aparece).
   const natalActive = isActive('natal') && (!catalog || catalog.products.some((product) => inCampaign(product, 'natal')));
+  const temaNatal = useTemaNatal();
   const escoamentoActive =
     isActive('escoamento') && (!catalog || catalog.products.some((product) => inCampaign(product, 'escoamento')));
   // O link "Cestas de Natal" já cobre a categoria das cestas.
@@ -222,11 +229,18 @@ export function Header() {
       <CampaignBand />
       <header className="s7-cabecalho" ref={headerRef}>
         <div className="s7-contentor s7-cabecalho__in">
-          <Logo />
+          <Logo hat={temaNatal} />
           <SearchForm key={q} initial={q} />
           <div className="s7-cabecalho__accoes">
             <Link className="s7-accao" to="/encomenda">
-              <Icon name="recibo" />
+              {temaNatal ? (
+                <span className="s7-accao__ico">
+                  <Icon name="recibo" />
+                  <Azevinho className="s7-accao__azevinho" />
+                </span>
+              ) : (
+                <Icon name="recibo" />
+              )}
               <span>Encomendas</span>
             </Link>
             <Link

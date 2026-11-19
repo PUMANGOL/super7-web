@@ -14,7 +14,9 @@ import { useCatalog } from '../../catalog/useCatalog';
 import { BackToCatalogLink, Breadcrumbs, CatalogError, EmptyState, type Crumb } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
 import { ProductGrid } from '../../components/store/ProductCard';
-import { Price, ProductImage, QuantityInput, StockBar } from '../../components/store/ProductBits';
+import { CabazStock, LimitedStockBadge, Price, ProductImage, QuantityInput, StockBar } from '../../components/store/ProductBits';
+import { Azevinho } from '../../components/store/natal/Aderecos';
+import { useTemaNatal } from '../../components/store/natal/tema';
 import { CAMPAIGNS } from '../../config/store';
 import { hasOnlinePayment, paymentMethodsShort } from '../../catalog/paymentCopy';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
@@ -33,6 +35,9 @@ function Availability({ product }: { product: Product }) {
   }
   // No escoamento, a barra de stock substitui esta indicação.
   if (inCampaign(product, 'escoamento') && product.stock !== null) return null;
+
+  // Nas cestas, a quantidade em stock aparece sempre, realçada.
+  if (product.isCabaz && product.stock !== null) return <CabazStock product={product} large />;
 
   // A categoria pede a quantidade exacta.
   if (product.showStock && product.stock !== null) {
@@ -102,6 +107,22 @@ function CompareCabazes({ current, cabazes }: { current: Product; cabazes: Produ
                 ))}
               </tr>
               <tr>
+                <th scope="row">Em stock</th>
+                {cabazes.map((cabaz) => (
+                  <td key={cabaz.id} className={cellClass(cabaz)}>
+                    {cabaz.stock === null ? (
+                      '—'
+                    ) : cabaz.stock > 0 ? (
+                      <span className={cabaz.stock <= 5 ? 's7-comparar__stock s7-comparar__stock--pouco' : 's7-comparar__stock'}>
+                        {cabaz.stock}
+                      </span>
+                    ) : (
+                      <span className="s7-etiqueta s7-etiqueta--esgotado">Esgotado</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+              <tr>
                 <th scope="row">Preço</th>
                 {cabazes.map((cabaz) => (
                   <td key={cabaz.id} className={cellClass(cabaz)}>
@@ -154,6 +175,7 @@ function relatedFor(product: Product, catalog: Catalog, clearanceActive: boolean
 }
 
 function ProductDetail({ product, catalog }: { product: Product; catalog: Catalog }) {
+  const temaNatal = useTemaNatal();
   const navigate = useNavigate();
   const addToCart = useAddToCart();
   const [qty, setQty] = useState(1);
@@ -195,11 +217,15 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
 
       <article className={detailClasses.join(' ')}>
         <div className="s7-detalhe__media">
-          {discount > 0 ? (
-            <span className="s7-etiqueta s7-etiqueta--desconto">−{discount}%</span>
-          ) : product.badge ? (
-            <span className="s7-etiqueta s7-etiqueta--natal">{product.badge}</span>
-          ) : null}
+          <div className="s7-detalhe__selos">
+            {discount > 0 ? (
+              <span className="s7-etiqueta s7-etiqueta--desconto">−{discount}%</span>
+            ) : product.badge ? (
+              <span className="s7-etiqueta s7-etiqueta--natal">{product.badge}</span>
+            ) : null}
+            {available && product.limitedStock && <LimitedStockBadge />}
+          </div>
+          {temaNatal && product.isCabaz && <Azevinho className="s7-detalhe__azevinho" />}
           <ProductImage product={product} size={900} width={815} height={880} lazy={false} />
         </div>
 

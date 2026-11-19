@@ -124,3 +124,14 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
+
+/* "Stock limitado", logo por baixo do campo Stock */
+.product-form-stock-flag {
+  margin-top: 0.5rem;
+}
+
+/* Lista de produtos: "Limitado" ao lado da quantidade em stock */
+.backoffice-stock-limitado {
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}

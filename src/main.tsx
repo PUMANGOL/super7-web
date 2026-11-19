@@ -7,6 +7,7 @@ import './assets/css/super7.css';
 import './assets/css/super7-app.css';
 import './assets/css/super7-ajustes.css';
 import './assets/css/super7-hero.css';
+import './assets/css/super7-natal.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

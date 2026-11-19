@@ -10,6 +10,8 @@ import { useCatalog } from '../../catalog/useCatalog';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
 import { CabazCard, CabazCardSkeleton } from '../../components/store/CabazCard';
 import { Countdown } from '../../components/store/Countdown';
+import { Azevinho, CenaNatal, EnfeitesDisco, FioLuzes } from '../../components/store/natal/Aderecos';
+import { useTemaNatal } from '../../components/store/natal/tema';
 import { HeroCabazes } from '../../components/store/HeroCabazes';
 import { CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
@@ -17,7 +19,7 @@ import { ProductCard, ProductCardSkeleton, ProductGrid } from '../../components/
 import { useContagemAte, useHeroMotion } from '../../components/store/useHeroMotion';
 import type { Campaign } from '../../config/store';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { formatKz, plural } from '../../utils/format';
+import { formatDate, formatKz, plural } from '../../utils/format';
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -93,6 +95,7 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
   const heroRef = useRef<HTMLElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   useHeroMotion(heroRef, sceneRef);
+  const temaNatal = useTemaNatal();
 
   const word = (index: number) => ({ '--p': index }) as CSSProperties;
 
@@ -107,6 +110,7 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
           />
         ))}
       </div>
+      {temaNatal && <FioLuzes className="s7-hero__luzes" lampadas={30} festoes={6} flecha={16} />}
 
       <div className="s7-contentor s7-hero__in">
         <div className="s7-hero__texto">
@@ -136,7 +140,14 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
               </a>
             )}
           </div>
-          {campaign.ordersUntil && <Countdown until={campaign.ordersUntil} label="Encomendas de Natal até" />}
+          {temaNatal ? (
+            <CenaNatal
+              label="Encomendas de Natal até"
+              date={campaign.ordersUntil ? formatDate(campaign.ordersUntil) : undefined}
+            />
+          ) : (
+            campaign.ordersUntil && <Countdown until={campaign.ordersUntil} label="Encomendas de Natal até" />
+          )}
         </div>
 
         <div className="s7-hero__palco">
@@ -149,6 +160,7 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
               <i />
             </div>
             <div className="s7-hero__disco" aria-hidden="true">
+              {temaNatal && <EnfeitesDisco />}
               <div className="s7-hero__fita">
                 <div className="s7-hero__fita-pista">
                   {[...FITA, ...FITA].map((text, index) => (
@@ -208,6 +220,7 @@ function StoreHero() {
 
 export function HomePage() {
   useDocumentTitle(null);
+  const temaNatal = useTemaNatal();
   const catalog = useCatalog();
   const loading = catalog.isLoading;
   const failed = catalog.isError;
@@ -275,6 +288,7 @@ export function HomePage() {
               <div>
                 <p className="s7-sobretitulo s7-sobretitulo--natal">
                   <Icon name="gift" /> Cestas de Natal
+                  {temaNatal && <Azevinho className="s7-sobretitulo__azevinho" />}
                 </p>
                 <h2 id="s7-cabazes-titulo">
                   {cabazes.length === 3 ? 'Três cestas, prontas a oferecer' : 'Cestas prontas a oferecer'}

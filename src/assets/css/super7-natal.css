@@ -1,0 +1,595 @@
+/* ==========================================================================
+   Cestas: quantidade em stock realçada e selo "Stock limitado" (sempre, com ou sem tema)
+   Tema de Natal: adereços natalícios (só com .s7-loja--natal; ver components/store/natal)
+   Só transform, translate, rotate, scale, opacity e box-shadow nas animações.
+   ========================================================================== */
+
+/* 1 · Quantidade em stock das cestas (ProductBits.tsx, CabazStock) --------------- */
+.s7-cesta-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: var(--s7-verde-claro);
+  color: var(--s7-verde-escuro);
+  font: 600 var(--s7-t-xs) / 1.2 var(--s7-fonte-display);
+  white-space: nowrap;
+}
+.s7-cesta-stock b {
+  font-size: 1.15em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.s7-cesta-stock__ponto {
+  position: relative;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--s7-verde);
+}
+.s7-cesta-stock__ponto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: s7n-onda 2.4s ease-out infinite;
+}
+.s7-cesta-stock--pouco {
+  background: #fff3dc;
+  color: #8a4a00;
+}
+.s7-cesta-stock--pouco .s7-cesta-stock__ponto {
+  background: #e08a00;
+}
+.s7-cesta-stock--grande {
+  gap: 7px;
+  padding: 6px 12px 6px 10px;
+  font-size: var(--s7-t-s);
+}
+.s7-cesta-stock--grande .s7-cesta-stock__ponto {
+  width: 8px;
+  height: 8px;
+}
+@keyframes s7n-onda {
+  from {
+    opacity: 0.6;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+
+/* Nível à esquerda e stock à direita, no topo do cartão da cesta */
+.s7-cabaz__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.s7-produto__corpo .s7-cesta-stock {
+  align-self: flex-start;
+  justify-self: start;
+}
+
+/* Tabela "Compare as cestas": linha "Em stock" */
+.s7-comparar__stock {
+  font-weight: 800;
+  color: var(--s7-verde-escuro);
+}
+.s7-comparar__stock--pouco {
+  color: #8a4a00;
+}
+
+/* 2 · Selo "Stock limitado" e selos empilhados --------------------------------- */
+.s7-etiqueta--limitado {
+  background: #f6c85f;
+  color: var(--s7-verde-noite);
+}
+.s7-etiqueta--limitado .s7-ico {
+  width: 12px;
+  height: 12px;
+}
+.s7-cabaz__selo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.s7-detalhe__selos {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.s7-detalhe__selos .s7-etiqueta {
+  position: static;
+}
+
+/* ==========================================================================
+   Tema de Natal
+   ========================================================================== */
+
+/* 3 · Gorro no "S" do logótipo e azevinho no ícone das Encomendas ---------------- */
+.s7-logo {
+  position: relative;
+}
+.s7-logo__gorro {
+  position: absolute;
+  left: calc(var(--s7-logo-h, 46px) * -0.02);
+  top: calc(var(--s7-logo-h, 46px) * -0.3);
+  width: calc(var(--s7-logo-h, 46px) * 0.68);
+  height: auto;
+  rotate: -16deg;
+  filter: drop-shadow(0 2px 2px rgba(21, 33, 27, 0.2));
+  pointer-events: none;
+}
+.s7-gorro__corpo {
+  transform-box: fill-box;
+  transform-origin: 15% 100%;
+  animation: s7n-gorro 4.2s ease-in-out infinite;
+}
+@keyframes s7n-gorro {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  50% {
+    rotate: 5deg;
+  }
+}
+
+.s7-accao__ico {
+  position: relative;
+  display: inline-flex;
+}
+.s7-accao__azevinho {
+  position: absolute;
+  top: -9px;
+  right: -10px;
+  width: 19px;
+  height: auto;
+  rotate: 16deg;
+  pointer-events: none;
+}
+
+/* Bagas do azevinho: piscam de vez em quando */
+.s7-azevinho__bagas {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: s7n-bagas 3.4s ease-in-out infinite;
+}
+@keyframes s7n-bagas {
+  0%,
+  70%,
+  100% {
+    scale: 1;
+  }
+  80% {
+    scale: 1.12;
+  }
+}
+
+/* 4 · Fio de luzes (FioLuzes): fio em festões e lâmpadas a cintilar -------------- */
+.s7-luzes {
+  --fio-cor: rgba(255, 255, 255, 0.28);
+  position: relative;
+  height: calc(var(--flecha) + 14px);
+  pointer-events: none;
+}
+.s7-luzes__fio {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: calc(var(--flecha) + 2px);
+  overflow: visible;
+}
+.s7-luzes__fio path {
+  stroke: var(--fio-cor);
+  stroke-width: 1.5;
+}
+.s7-luzes__lampada {
+  --cor: #ff4d58;
+  --brilho: rgba(255, 70, 80, 0.75);
+  position: absolute;
+  width: 7px;
+  height: 11px;
+  margin: 2px 0 0 -3.5px;
+  border-radius: 45% 45% 50% 50% / 38% 38% 62% 62%;
+  background: var(--cor);
+  box-shadow: 0 0 7px 1px var(--brilho);
+  animation: s7n-pisca 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.41s);
+}
+.s7-luzes__lampada::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 1.5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: #33433b;
+}
+.s7-luzes__lampada--dourada {
+  --cor: #ffd36b;
+  --brilho: rgba(255, 205, 90, 0.8);
+}
+.s7-luzes__lampada--verde {
+  --cor: #3fdc8e;
+  --brilho: rgba(60, 220, 140, 0.7);
+}
+.s7-luzes__lampada--branca {
+  --cor: #fffbe8;
+  --brilho: rgba(255, 250, 225, 0.85);
+}
+@keyframes s7n-pisca {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+    box-shadow: 0 0 2px 0 var(--brilho);
+  }
+}
+
+/* No topo do banner e do rodapé */
+.s7-hero__luzes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+.s7-rodape {
+  position: relative;
+}
+.s7-rodape__luzes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+/* Ecrãs estreitos: metade das lâmpadas (as que ficam continuam no fio) */
+@media (max-width: 700px) {
+  .s7-hero__luzes .s7-luzes__lampada:nth-child(odd),
+  .s7-rodape__luzes .s7-luzes__lampada:nth-child(odd) {
+    display: none;
+  }
+}
+
+/* 5 · Enfeites pendurados no disco do banner ------------------------------------ */
+.s7-loja--natal .s7-hero__disco {
+  container-type: inline-size;
+}
+.s7-enfeites {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.s7-enfeite {
+  position: absolute;
+  top: 0;
+  width: 0;
+  height: var(--fio);
+  transform-origin: 50% 0;
+  animation: s7n-pendulo 3.8s ease-in-out var(--atraso, 0s) infinite alternate;
+}
+.s7-enfeite::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.5px;
+  width: 1px;
+  background: linear-gradient(rgba(120, 90, 40, 0.1), rgba(120, 90, 40, 0.55));
+}
+.s7-enfeite__peca {
+  --c1: #ff6b74;
+  --c2: #de1827;
+  --c3: #8f0d17;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: calc(var(--tamanho) * 5px);
+  width: calc(var(--tamanho) * 1cqw);
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 33% 30%, rgba(255, 255, 255, 0.85) 0 7%, transparent 8%),
+    radial-gradient(circle at 36% 32%, var(--c1), var(--c2) 50%, var(--c3) 100%);
+  box-shadow: 0 4px 9px rgba(70, 45, 10, 0.25);
+}
+/* Tampa dourada e uma faixa de brilhantes */
+.s7-enfeite__peca::before {
+  content: "";
+  position: absolute;
+  top: -9%;
+  left: 50%;
+  width: 28%;
+  height: 14%;
+  translate: -50% 0;
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(#f6d27a, #b8862a);
+}
+.s7-enfeite__peca::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: 9%;
+  right: 9%;
+  height: 8%;
+  border-radius: 999px;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.8) 0 2px, transparent 2px 5px);
+  opacity: 0.6;
+}
+.s7-enfeite__peca--dourada {
+  --c1: #fff0bd;
+  --c2: #f2b63c;
+  --c3: #a8761c;
+}
+.s7-enfeite__peca--verde {
+  --c1: #5fe0a0;
+  --c2: #12854c;
+  --c3: #0a4d2c;
+}
+.s7-enfeite__peca--estrela {
+  border-radius: 0;
+  background: linear-gradient(160deg, #fff0bd, #f2b63c 55%, #c8962e);
+  box-shadow: none;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: s7n-estrela 2.8s ease-in-out var(--atraso, 0s) infinite;
+}
+.s7-enfeite__peca--estrela::before,
+.s7-enfeite__peca--estrela::after {
+  content: none;
+}
+@keyframes s7n-pendulo {
+  from {
+    rotate: -5deg;
+  }
+  to {
+    rotate: 5deg;
+  }
+}
+@keyframes s7n-estrela {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+  50% {
+    scale: 1.18;
+    opacity: 0.8;
+  }
+}
+
+/* 6 · Montra natalícia no lugar da contagem (CenaNatal) ------------------------- */
+.s7-natal-cena {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: min(100%, 440px);
+  margin-top: 4px;
+}
+.s7-natal-cena__luzes {
+  --fio-cor: rgba(255, 255, 255, 0.32);
+}
+.s7-natal-cena__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--s7-t-s);
+  color: rgba(255, 255, 255, 0.82);
+}
+.s7-natal-cena__titulo .s7-ico {
+  color: #f6c85f;
+}
+.s7-natal-cena__aderecos {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  height: 86px;
+  padding: 2px 10px 0;
+}
+/* Luz dourada no chão da montra */
+.s7-natal-cena__aderecos::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 14px;
+  background: radial-gradient(closest-side, rgba(246, 200, 95, 0.2), transparent);
+  pointer-events: none;
+}
+.s7-natal-cena__aderecos svg {
+  display: block;
+  width: auto;
+  flex: none;
+  overflow: visible;
+  animation: s7n-aparece-adereco 0.6s var(--s7h-mola, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+.s7-natal-arvore {
+  height: 82px;
+  filter: drop-shadow(0 0 6px rgba(246, 200, 95, 0.25));
+  animation-delay: 0.85s !important;
+}
+.s7-natal-presentes {
+  height: 54px;
+  animation-delay: 0.95s !important;
+}
+.s7-natal-bengala {
+  height: 50px;
+  animation-delay: 1.05s !important;
+}
+.s7-natal-sinos {
+  height: 50px;
+  animation-delay: 1.15s !important;
+}
+@keyframes s7n-aparece-adereco {
+  from {
+    opacity: 0;
+    scale: 0.6;
+    translate: 0 12px;
+  }
+}
+
+/* Árvore: luzes a piscar e estrela a brilhar */
+.s7-natal-arvore__luzes circle {
+  animation: s7n-pisca-svg 1.9s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.27s);
+}
+.s7-natal-arvore__estrela {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: s7n-estrela 2.4s ease-in-out infinite;
+}
+@keyframes s7n-pisca-svg {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Presentes: o grande salta, a tampa do pequeno levanta */
+.s7-natal-presentes__grande {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: s7n-salto 3.4s ease-in-out 2s infinite;
+}
+.s7-natal-presentes__tampa {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation: s7n-tampa 3.4s ease-in-out 3.7s infinite;
+}
+@keyframes s7n-salto {
+  0%,
+  62%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  70% {
+    transform: translateY(0) scale(1.04, 0.95);
+  }
+  78% {
+    transform: translateY(-5px) scale(0.98, 1.03);
+  }
+  88% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+@keyframes s7n-tampa {
+  0%,
+  62%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  74% {
+    transform: translateY(-4px) rotate(-8deg);
+  }
+  86% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+/* Bengala: balança devagar; sinos: tocam */
+.s7-natal-bengala {
+  transform-origin: 50% 100%;
+}
+.s7-natal-sinos__a,
+.s7-natal-sinos__b {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: s7n-sino 1.6s ease-in-out infinite alternate;
+}
+.s7-natal-sinos__b {
+  animation-delay: -0.8s;
+}
+@keyframes s7n-sino {
+  from {
+    transform: rotate(-9deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}
+
+/* Estrelinhas que cintilam por cima da montra */
+.s7-natal-cena__brilho {
+  position: absolute;
+  width: 9px;
+  aspect-ratio: 1;
+  background: #f6c85f;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0;
+  animation: s7h-cintila 3.6s ease-in-out var(--a, 0s) infinite;
+}
+
+/* 7 · Azevinho nas cestas e no título da secção --------------------------------- */
+.s7-cabaz__azevinho,
+.s7-produto__azevinho,
+.s7-detalhe__azevinho {
+  position: absolute;
+  z-index: 2;
+  height: auto;
+  rotate: 14deg;
+  filter: drop-shadow(0 2px 3px rgba(21, 33, 27, 0.18));
+  pointer-events: none;
+}
+.s7-cabaz__azevinho {
+  top: 10px;
+  right: 10px;
+  width: 46px;
+}
+.s7-produto__azevinho {
+  top: 8px;
+  right: 8px;
+  width: 36px;
+}
+/* Com o azevinho, as etiquetas do cartão quebram de linha antes de lhe chegar */
+.s7-produto__media:has(.s7-produto__azevinho) .s7-produto__etiquetas {
+  right: 50px;
+}
+.s7-detalhe__azevinho {
+  top: 16px;
+  right: 16px;
+  width: 64px;
+}
+.s7-sobretitulo__azevinho {
+  width: 26px;
+  height: auto;
+  margin-left: 2px;
+}
+
+/* Acessibilidade: com "reduzir movimento" fica tudo parado */
+@media (prefers-reduced-motion: reduce) {
+  .s7-cesta-stock__ponto::after,
+  .s7-loja--natal *,
+  .s7-loja--natal *::before,
+  .s7-loja--natal *::after {
+    animation: none !important;
+  }
+  .s7-natal-cena__brilho {
+    opacity: 0.6;
+  }
+}

@@ -4,7 +4,9 @@ import type { Product } from '../../catalog/types';
 import { useAddToCart } from '../../hooks/useAddToCart';
 import { formatKz, plural } from '../../utils/format';
 import { Icon } from './Icon';
-import { ProductImage } from './ProductBits';
+import { Azevinho } from './natal/Aderecos';
+import { useTemaNatal } from './natal/tema';
+import { CabazStock, LimitedStockBadge, ProductImage } from './ProductBits';
 
 const VISIBLE_ITEMS = 4;
 
@@ -13,9 +15,10 @@ function shortItemName(name: string): string {
   return name.replace(/\s\d[\d,.]*\s?(kg|g|l|ml|cl|porções|un\.?)$/i, '');
 }
 
-/** Cartão de cabaz de Natal (`s7-cabaz`), com a fita na cor do nível. */
+/** Cartão de cabaz de Natal (`s7-cabaz`), com a fita na cor do nível e a quantidade em stock realçada. */
 export function CabazCard({ product }: { product: Product }) {
   const addToCart = useAddToCart();
+  const temaNatal = useTemaNatal();
   const available = isInStock(product);
   const classes = ['s7-cabaz'];
   if (product.level) classes.push(`s7-cabaz--${product.level}`);
@@ -27,17 +30,26 @@ export function CabazCard({ product }: { product: Product }) {
   return (
     <article className={classes.join(' ')}>
       <div className="s7-cabaz__media">
-        {!available ? (
-          <span className="s7-etiqueta s7-etiqueta--esgotado s7-cabaz__selo">Esgotado</span>
-        ) : (
-          product.badge && <span className="s7-etiqueta s7-etiqueta--natal s7-cabaz__selo">{product.badge}</span>
-        )}
+        <div className="s7-cabaz__selo">
+          {!available ? (
+            <span className="s7-etiqueta s7-etiqueta--esgotado">Esgotado</span>
+          ) : (
+            <>
+              {product.badge && <span className="s7-etiqueta s7-etiqueta--natal">{product.badge}</span>}
+              {product.limitedStock && <LimitedStockBadge />}
+            </>
+          )}
+        </div>
+        {temaNatal && <Azevinho className="s7-cabaz__azevinho" />}
         <ProductImage product={product} size={600} alt={`${product.name} em embalagem de oferta`} />
       </div>
       <div className="s7-cabaz__corpo">
-        <p className={product.level ? `s7-nivel s7-nivel--${product.level}` : 's7-nivel'}>
-          {product.level ?? 'Cesta de Natal'}
-        </p>
+        <div className="s7-cabaz__topo">
+          <p className={product.level ? `s7-nivel s7-nivel--${product.level}` : 's7-nivel'}>
+            {product.level ?? 'Cesta de Natal'}
+          </p>
+          <CabazStock product={product} />
+        </div>
         <h3 className="s7-cabaz__nome">
           <Link to={productPath(product)}>{product.name}</Link>
         </h3>

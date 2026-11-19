@@ -91,6 +91,42 @@ export function StockBar({ product, suffix = '' }: StockBarProps) {
   );
 }
 
+/** Selo "Stock limitado" (ligado no back-office, junto ao stock do produto). */
+export function LimitedStockBadge() {
+  return (
+    <span className="s7-etiqueta s7-etiqueta--limitado">
+      <Icon name="relogio" /> Stock limitado
+    </span>
+  );
+}
+
+/**
+ * Quantidade em stock das cestas, realçada: ponto verde e número em destaque; com 5 ou menos,
+ * em âmbar ("Só restam 3 unidades"). Sem stock não mostra nada (o cartão já diz "Esgotado").
+ */
+export function CabazStock({ product, large = false }: { product: Pick<Product, 'stock'>; large?: boolean }) {
+  if (product.stock === null || product.stock <= 0) return null;
+  const few = product.stock <= 5;
+  const classes = ['s7-cesta-stock'];
+  if (few) classes.push('s7-cesta-stock--pouco');
+  if (large) classes.push('s7-cesta-stock--grande');
+
+  return (
+    <p className={classes.join(' ')}>
+      <span className="s7-cesta-stock__ponto" aria-hidden="true" />
+      {few ? (
+        <span>
+          {product.stock === 1 ? 'Só resta' : 'Só restam'} <b>{product.stock}</b> {product.stock === 1 ? 'unidade' : 'unidades'}
+        </span>
+      ) : (
+        <span>
+          <b>{product.stock}</b> em stock
+        </span>
+      )}
+    </p>
+  );
+}
+
 interface QuantityInputProps {
   value: number;
   max: number;

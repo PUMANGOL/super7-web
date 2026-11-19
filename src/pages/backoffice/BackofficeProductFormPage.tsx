@@ -42,6 +42,8 @@ interface FormState {
   kind: ProductKind;
   price: string;
   stock: string;
+  /** Selo "Stock limitado" na loja. */
+  limitedStock: boolean;
   available: boolean;
   description: string;
   format: string;
@@ -74,6 +76,7 @@ function toFormState(product: ApiProduct | null): FormState {
     kind: product?.kind ?? 'PHYSICAL',
     price: product ? String(product.price) : '',
     stock: product ? String(product.stock ?? 0) : '',
+    limitedStock: attributes.limitedStock,
     available: product?.available ?? true,
     description: product?.description ?? '',
     format: attributes.format,
@@ -193,6 +196,7 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
         ? form.items.filter((row) => row.name.trim()).map((row) => ({ name: row.name.trim(), qty: Number(row.value) }))
         : [],
       featured: form.featured,
+      limitedStock: form.limitedStock,
       extra: form.extra.map((row) => ({ name: row.name.trim(), value: row.value.trim() })),
     };
 
@@ -269,6 +273,13 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
             <label className="form-label" htmlFor={field('stock')}>Stock (unidades)</label>
             <input id={field('stock')} type="number" min="0" step="1" className={inputClass('stock')} value={form.stock} onChange={(e) => update('stock', e.target.value)} placeholder="Ex.: 80" />
             {errors.stock && <span className="form-error">{errors.stock}</span>}
+            <label className="add-book-checkbox product-form-stock-flag">
+              <input type="checkbox" checked={form.limitedStock} onChange={(e) => update('limitedStock', e.target.checked)} />
+              <span>
+                Stock limitado
+                <small className="product-form-hint">Mostra o selo "Stock limitado" nos cartões e na página do produto.</small>
+              </span>
+            </label>
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor={field('kind')}>Tipo</label>

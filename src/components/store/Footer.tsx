@@ -4,6 +4,8 @@ import { inCampaign } from '../../catalog/query';
 import { useCatalog } from '../../catalog/useCatalog';
 import { PAYMENT_METHOD_LABELS, type CampaignId } from '../../config/store';
 import { Logo } from './Header';
+import { FioLuzes } from './natal/Aderecos';
+import { useTemaNatal } from './natal/tema';
 
 export function Footer() {
   const { data: catalog } = useCatalog();
@@ -12,9 +14,11 @@ export function Footer() {
     campaignActive(id) && (!catalog || catalog.products.some((product) => inCampaign(product, id)));
   const { paymentMethods } = useCheckoutOptions().options;
   const year = new Date().getFullYear();
+  const temaNatal = useTemaNatal();
 
   return (
     <footer className="s7-rodape">
+      {temaNatal && <FioLuzes className="s7-rodape__luzes" lampadas={32} festoes={8} flecha={14} />}
       <div className="s7-contentor s7-rodape__in">
         <div className="s7-rodape__marca">
           <Logo light />

@@ -259,6 +259,9 @@ export function BackofficeProductsPage() {
                               ) : (
                                 product.stock
                               )}
+                              {product.limitedStock && product.stock !== 0 && (
+                                <span className="badge badge-orange backoffice-stock-limitado">Limitado</span>
+                              )}
                             </td>
                             <td>
                               <div className="backoffice-tags">

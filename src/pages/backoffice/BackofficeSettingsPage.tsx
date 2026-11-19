@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { getApiErrorMessages } from '../../api/client';
 import { fetchStoreSettings, updateStoreSettings } from '../../api/settings';
-import { PAYMENT_METHOD_LABELS, STORE_PAYMENT_METHODS, type PaymentMethod, type PickupMode } from '../../config/store';
+import {
+  CHRISTMAS_THEME_DEFAULT,
+  PAYMENT_METHOD_LABELS,
+  STORE_PAYMENT_METHODS,
+  type PaymentMethod,
+  type PickupMode,
+} from '../../config/store';
 import { useAuth } from '../../context/auth';
 import { useToast } from '../../context/toast';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -28,6 +34,7 @@ interface FormState {
   iban: string;
   ibanHolder: string;
   ibanBank: string;
+  christmasTheme: boolean;
 }
 
 function toForm(settings: StoreSettings): FormState {
@@ -40,6 +47,7 @@ function toForm(settings: StoreSettings): FormState {
     iban: settings.iban ?? '',
     ibanHolder: settings.ibanHolder ?? '',
     ibanBank: settings.ibanBank ?? '',
+    christmasTheme: settings.christmasTheme ?? CHRISTMAS_THEME_DEFAULT,
   };
 }
 
@@ -121,6 +129,7 @@ function SettingsForm({
     onError: (error) => setErrors(getApiErrorMessages(error, 'Não foi possível guardar as definições.')),
   });
 
+  const themeSupported = typeof initial.christmasTheme === 'boolean';
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
   const toggleMethod = (method: PaymentMethod, checked: boolean) =>
     set(
@@ -142,6 +151,7 @@ function SettingsForm({
       iban: form.iban.trim() || null,
       ibanHolder: form.ibanHolder.trim() || null,
       ibanBank: form.ibanBank.trim() || null,
+      ...(themeSupported ? { christmasTheme: form.christmasTheme } : {}),
     });
   };
 
@@ -306,6 +316,42 @@ function SettingsForm({
                 <small>O cliente indica para quem é e escreve uma mensagem para o cartão.</small>
               </span>
             </label>
+          </fieldset>
+
+          <fieldset className="settings-card" disabled={disabled}>
+            <legend>Tema da loja</legend>
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={form.christmasTheme}
+                disabled={!themeSupported}
+                onChange={(event) => set('christmasTheme', event.target.checked)}
+              />
+              <span>
+                <strong>Tema de Natal</strong>
+                <small>
+                  Adereços natalícios na loja: gorro no logótipo, enfeites e luzes no banner, azevinho nas cestas.
+                  Só aparece durante a campanha de Natal; desligado, a loja fica com o aspecto habitual.
+                </small>
+              </span>
+            </label>
+            {!themeSupported && (
+              <p className="settings-help">
+                A API ainda não guarda esta opção: fica disponível depois de publicar a nova versão da API. Até lá o tema
+                está ligado durante a campanha de Natal.
+              </p>
+            )}
+            <p className="settings-help">
+              Pré-visualizar:{' '}
+              <a href="/?tema=natal" target="_blank" rel="noreferrer">
+                com o tema de Natal
+              </a>{' '}
+              ·{' '}
+              <a href="/?tema=classico" target="_blank" rel="noreferrer">
+                sem o tema
+              </a>
+              . Só muda a página aberta, não grava nada.
+            </p>
           </fieldset>
 
           {errors.length > 0 && (

@@ -78,6 +78,7 @@ function mapCheckoutOptions(remote: ApiCheckoutOptions): CheckoutOptions {
       fixedPostId: remote.pickupMode === 'FIXED' ? remote.fixedPickupPostId ?? null : null,
     },
     bankTransfer: bank?.iban ? { iban: bank.iban, holder: bank.holder ?? '', bank: bank.bank ?? '' } : null,
+    christmasTheme: typeof remote.christmasTheme === 'boolean' ? remote.christmasTheme : null,
   };
 }
 

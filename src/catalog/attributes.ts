@@ -16,6 +16,8 @@ export interface StoreAttributes {
   summary: string;
   items: CabazItem[];
   featured: boolean;
+  /** Selo "Stock limitado". */
+  limitedStock: boolean;
   /** Atributos que a loja não interpreta (cor, tamanho…): preservados ao gravar. */
   extra: ProductAttribute[];
 }
@@ -30,6 +32,7 @@ export const EMPTY_STORE_ATTRIBUTES: StoreAttributes = {
   summary: '',
   items: [],
   featured: false,
+  limitedStock: false,
   extra: [],
 };
 
@@ -57,6 +60,7 @@ const KEY_ALIASES: Record<string, keyof Omit<StoreAttributes, 'extra'>> = {
   itens: 'items',
   inclui: 'items',
   destaque: 'featured',
+  stocklimitado: 'limitedStock',
 };
 
 /** "3.200", "3 200 Kz", "3200,50" → número; texto inválido → null. */
@@ -146,6 +150,9 @@ export function parseStoreAttributes(attributes: ProductAttribute[] | null | und
       case 'featured':
         result.featured = isYes(value);
         break;
+      case 'limitedStock':
+        result.limitedStock = isYes(value);
+        break;
       default:
         if (name.trim()) result.extra.push({ name: name.trim(), value });
     }
@@ -184,6 +191,7 @@ export function readStoreAttributes(product: (ProductStoreFields & { attributes?
     summary: product.summary?.trim() || fromAttributes.summary,
     items: items && items.length > 0 ? items : fromAttributes.items,
     featured: product.featured != null ? Boolean(product.featured) : fromAttributes.featured,
+    limitedStock: product.limitedStock != null ? Boolean(product.limitedStock) : fromAttributes.limitedStock,
     extra: fromAttributes.extra,
   };
 }
@@ -202,6 +210,7 @@ export function toStoreFields(attributes: StoreAttributes): ProductStoreFields {
       .filter((item) => item.name.trim())
       .map((item) => ({ name: item.name.trim(), quantity: Math.max(1, Math.round(item.qty)) })),
     featured: attributes.featured,
+    limitedStock: attributes.limitedStock,
   };
 }
 
@@ -221,6 +230,7 @@ export function serializeStoreAttributes(attributes: StoreAttributes): ProductAt
   add(PRODUCT_ATTRIBUTES.badge, attributes.badge);
   add(PRODUCT_ATTRIBUTES.summary, attributes.summary);
   if (attributes.featured) add(PRODUCT_ATTRIBUTES.featured, 'sim');
+  if (attributes.limitedStock) add(PRODUCT_ATTRIBUTES.limitedStock, 'sim');
   attributes.items
     .filter((item) => item.name.trim())
     .forEach((item) => add(PRODUCT_ATTRIBUTES.item, `${Math.max(1, Math.round(item.qty))} × ${item.name.trim()}`));
