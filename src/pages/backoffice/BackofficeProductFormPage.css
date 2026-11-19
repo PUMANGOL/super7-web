@@ -239,3 +239,38 @@
     transition: none;
   }
 }
+
+/* Lojas de levantamento: localização no mapa (coordenadas ou link do Google Maps) */
+.post-location-help {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--gray-600);
+}
+.post-location-found {
+  margin: 0.375rem 0 0;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  font-size: 0.75rem;
+  color: #92400e;
+}
+.post-location-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+}
+.post-location-check:hover {
+  text-decoration: underline;
+}
+.backoffice-sem-mapa {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--gray-300, #d1d5db);
+}

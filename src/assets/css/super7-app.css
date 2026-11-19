@@ -275,6 +275,96 @@
   flex: none;
   white-space: nowrap;
 }
+/* Ícone do mapa ao lado da loja de levantamento (MapLink.tsx): abre o Google Maps na localização do back-office. */
+.s7-mapa {
+  display: inline-grid;
+  place-items: center;
+  width: 1.65em;
+  height: 1.65em;
+  margin-inline: 0.3em 0.1em;
+  border-radius: 50%;
+  background: var(--s7-verde-claro);
+  color: var(--s7-verde);
+  vertical-align: -0.38em;
+  text-decoration: none;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+.s7-mapa .s7-ico {
+  width: 62%;
+  height: 62%;
+  stroke-width: 2.2;
+}
+.s7-mapa:hover {
+  background: var(--s7-verde);
+  color: #fff;
+  transform: scale(1.08);
+}
+.s7-mapa:focus-visible {
+  outline: 2px solid var(--s7-verde);
+  outline-offset: 2px;
+}
+/* Em fundo escuro (banner e faixa do topo) */
+.s7-mapa--claro {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f6c85f;
+}
+.s7-mapa--claro:hover {
+  background: #f6c85f;
+  color: var(--s7-verde-noite);
+}
+.s7-mapa--claro:focus-visible {
+  outline-color: #f6c85f;
+}
+/* Com texto: "Ver no mapa" */
+.s7-mapa--texto {
+  display: inline-flex;
+  gap: 6px;
+  width: auto;
+  height: auto;
+  margin: 6px 0 0;
+  padding: 5px 12px 5px 9px;
+  border-radius: 999px;
+  font-size: var(--s7-t-s);
+  font-weight: 700;
+  vertical-align: baseline;
+}
+.s7-mapa--texto .s7-ico {
+  width: 16px;
+  height: 16px;
+}
+/* Em grelhas (cartões da encomenda) não estica */
+.s7-ficha__item .s7-mapa--texto,
+.s7-levantar__texto .s7-mapa--texto {
+  justify-self: start;
+  width: fit-content;
+}
+.s7-mapa--texto:hover {
+  transform: none;
+}
+.s7-mapa--campo {
+  justify-self: start;
+}
+.s7-passo__info .s7-mapa--texto {
+  display: flex;
+  width: fit-content;
+  margin-top: 8px;
+  background: #fff;
+}
+.s7-passo__info .s7-mapa--texto:hover {
+  background: var(--s7-verde);
+}
+@media (prefers-reduced-motion: reduce) {
+  .s7-mapa {
+    transition: none;
+  }
+  .s7-mapa:hover {
+    transform: none;
+  }
+}
+
 /* "Levantei!": encomenda pronta e paga, o cliente confirma o levantamento (OrderPage.tsx, ReceiptConfirmation). */
 .s7-levantar {
   display: grid;

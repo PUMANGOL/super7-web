@@ -15,6 +15,7 @@ import { useTemaNatal } from '../../components/store/natal/tema';
 import { HeroCabazes } from '../../components/store/HeroCabazes';
 import { CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
+import { MapLink } from '../../components/store/MapLink';
 import { ProductCard, ProductCardSkeleton, ProductGrid } from '../../components/store/ProductCard';
 import { useContagemAte, useHeroMotion } from '../../components/store/useHeroMotion';
 import type { Campaign } from '../../config/store';
@@ -129,6 +130,7 @@ function ChristmasHero({ campaign, copy, cabazes, fromPrice, showClearance }: Ch
           <p className="s7-hero__intro">
             Cestas prontas a oferecer a clientes, colaboradores e família. Encomende online e levante{' '}
             {copy.fixedPickup ? copy.pickupPlace : 'na loja Super7 do posto Pumangol de Talatona'}
+            <MapLink post={copy.pickupPost} className="s7-mapa--claro" />
             {copy.homeDelivery ? ', ou receba em casa' : ''}.
           </p>
           <div className="s7-hero__accoes">
@@ -195,6 +197,7 @@ function StoreHero({ copy }: { copy: StoreCopy }) {
           </h1>
           <p className="s7-hero__intro">
             Encomende os produtos do dia-a-dia e levante-os {copy.pickupPlace}
+            <MapLink post={copy.pickupPost} className="s7-mapa--claro" />
             {copy.homeDelivery ? ', ou receba-os em casa' : ''}.
           </p>
           <div className="s7-hero__accoes">
@@ -251,7 +254,10 @@ export function HomePage() {
             <Icon name="pin" />
             <p>
               <strong>{copy.pickup.title}</strong>
-              <span>{copy.pickup.text}</span>
+              <span>
+                {copy.pickup.text}
+                <MapLink post={copy.pickupPost} />
+              </span>
             </p>
           </li>
           <li>
@@ -428,6 +434,7 @@ export function HomePage() {
                 {copy.fixedPickup
                   ? `Levante ${copy.pickupPlace}, na data que escolher.`
                   : 'Escolha a loja Super7 e a data.'}
+                <MapLink post={copy.pickupPost} label="Ver no mapa" />
                 {copy.homeDelivery ? ' Se preferir, entregamos na morada que indicar.' : ''}
               </p>
             </li>

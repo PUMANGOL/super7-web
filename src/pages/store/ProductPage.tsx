@@ -13,6 +13,7 @@ import type { Catalog, Product } from '../../catalog/types';
 import { useCatalog } from '../../catalog/useCatalog';
 import { BackToCatalogLink, Breadcrumbs, CatalogError, EmptyState, type Crumb } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
+import { MapLink } from '../../components/store/MapLink';
 import { ProductGrid } from '../../components/store/ProductCard';
 import { CabazStock, LimitedStockBadge, Price, ProductImage, QuantityInput, StockBar } from '../../components/store/ProductBits';
 import { Azevinho } from '../../components/store/natal/Aderecos';
@@ -266,7 +267,8 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
             <li>
               <Icon name="pin" />
               <span>
-                <strong>Levantamento {copy.pickupPlace}</strong>, sem custo de entrega
+                <strong>Levantamento {copy.pickupPlace}</strong>
+                <MapLink post={copy.pickupPost} />, sem custo de entrega
                 {copy.homeDelivery ? ', ou entrega na sua morada.' : '.'}
               </span>
             </li>

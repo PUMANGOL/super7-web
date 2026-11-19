@@ -243,6 +243,9 @@ export interface PickupPostDetails {
   /** "Todos os dias, 06h00–22h00". */
   openingHours?: string | null;
   phone?: string | null;
+  /** Localização no mapa (graus decimais), definida no back-office. As duas ou nenhuma. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface PickupPost extends PickupPostDetails {

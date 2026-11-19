@@ -48,6 +48,7 @@ export function IconSprite() {
         <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.3 6 11a6 6 0 0 1-12 0c0-4.7 6-11 6-11Z" /><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5" /></symbol>
         <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2Z" /><path d="M12 6.5v13" /></symbol>
         <symbol id="i-recibo" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5v-17Z" /><path d="M9 8.5h6M9 12.5h6" /></symbol>
+        <symbol id="i-mapa" viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5l-6-2Z" /><path d="M9 4.5v13M15 6.5v13" /></symbol>
         <symbol id="i-loja" viewBox="0 0 24 24"><path d="M4 9.5 5.5 4h13L20 9.5M4.5 10v10h15V10" /><path d="M4 9.5a2.7 2.7 0 0 0 5.33 0 2.7 2.7 0 0 0 5.34 0 2.7 2.7 0 0 0 5.33 0M9.5 20v-5.5h5V20" /></symbol>
         <symbol id="i-cartao" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></symbol>
         <symbol id="i-dinheiro" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="1.5" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01M18 12h.01" /></symbol>

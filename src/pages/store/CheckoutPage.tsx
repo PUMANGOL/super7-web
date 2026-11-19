@@ -13,6 +13,7 @@ import { BankTransferList, ProofFileInput } from '../../components/store/BankTra
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs, CatalogError, EmptyState } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
+import { MapLink } from '../../components/store/MapLink';
 import { ProductImage } from '../../components/store/ProductBits';
 import type { IconName } from '../../catalog/types';
 import {
@@ -402,8 +403,9 @@ export function CheckoutPage() {
         <p className="s7-passo__info">
           <Icon name="loja" />
           <span>
-            <strong>{selectedPost ? (selectedPost.zone ? `${selectedPost.name} · ${selectedPost.zone}` : selectedPost.name) : 'Loja Super7'}</strong>
+            <strong>{selectedPost?.name ?? 'Loja Super7'}</strong>
             {postInfo && <> · {postInfo}</>}
+            <MapLink post={selectedPost} label="Ver no mapa" />
           </span>
         </p>
       </div>
@@ -433,6 +435,7 @@ export function CheckoutPage() {
           Tentar novamente
         </button>
       )}
+      <MapLink post={selectedPost} label={`Ver ${selectedPost?.name ?? 'a loja'} no mapa`} className="s7-mapa--campo" />
     </Field>
   );
 

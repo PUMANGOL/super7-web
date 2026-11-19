@@ -9,6 +9,7 @@ import { useCampaigns } from '../../catalog/useStoreSettings';
 import { useCart } from '../../context/cart';
 import { plural } from '../../utils/format';
 import { Icon } from './Icon';
+import { MapLink } from './MapLink';
 import { Azevinho, Gorro } from './natal/Aderecos';
 import { useTemaNatal } from './natal/tema';
 
@@ -58,6 +59,7 @@ function CampaignBand() {
           <span>
             Levante a encomenda{' '}
             {copy.fixedPickup ? copy.pickupPlace : 'na loja Super7 do seu posto Pumangol'}
+            <MapLink post={copy.pickupPost} className="s7-mapa--claro" />
             {copy.homeDelivery ? ' ou receba-a em casa' : ''}
           </span>
         </p>

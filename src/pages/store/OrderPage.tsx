@@ -19,6 +19,7 @@ import { BankTransferList, ProofFileInput } from '../../components/store/BankTra
 import { CheckoutSteps, type CheckoutStep } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
+import { MapLink } from '../../components/store/MapLink';
 import { PaidDialog } from '../../components/store/PaidDialog';
 import {
   ExpressCountdown,
@@ -271,6 +272,7 @@ function DeliveryCard({ view }: { view: OrderView }) {
         <strong>{view.pickupPost || 'Loja Super7'}</strong>
       </p>
       {details && <p>{details}</p>}
+      <MapLink post={post} label="Ver no mapa" />
       {view.pickupDate && (
         <p>A partir de {formatDate(view.pickupDate, { weekday: 'long', day: 'numeric', month: 'long' })}.</p>
       )}
@@ -732,6 +734,8 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
  */
 function ReceiptConfirmation({ view, onConfirmed }: { view: OrderView; onConfirmed: (order: ApiOrder) => void }) {
   const home = view.deliveryType === 'HOME_DELIVERY';
+  const { data: posts } = usePickupPosts();
+  const post = posts?.find((item) => item.id === view.pickupPostId);
   const [asking, setAsking] = useState(false);
   const yesRef = useRef<HTMLButtonElement>(null);
   const confirm = useMutation({
@@ -755,6 +759,7 @@ function ReceiptConfirmation({ view, onConfirmed }: { view: OrderView; onConfirm
             ? 'Quando a receber, confirme aqui.'
             : `Levante-a ${where}${view.compraRef ? ` com a referência ${view.compraRef}` : ''}. Depois de a levantar, confirme aqui.`}
         </p>
+        {!home && <MapLink post={post} label="Ver no mapa" />}
       </div>
       <div className="s7-levantar__accoes">
         {asking ? (

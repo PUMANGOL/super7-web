@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { CheckoutOptions } from '../config/store';
+import type { PickupPost } from '../types/api';
 import { usePickupPosts } from '../hooks/usePickupPosts';
 import { hasOnlinePayment, paymentMethodsShort } from './paymentCopy';
 import { useCheckoutOptions } from './useStoreSettings';
@@ -20,6 +21,8 @@ export interface StoreCopy {
   fixedPickup: boolean;
   /** "na loja Super7 que escolher" ou, com a loja fixa, "na loja Super7 Talatona". */
   pickupPlace: string;
+  /** A loja fixa (com a localização no mapa, se estiver definida); null quando o cliente escolhe a loja. */
+  pickupPost: PickupPost | null;
   /** Cartão de oferta (mensagem) no checkout. */
   giftEnabled: boolean;
   pickup: Highlight;
@@ -40,7 +43,8 @@ function paymentHighlight(options: CheckoutOptions): Highlight {
   return { title: 'Pagamento Multicaixa', text: capitalise(paymentMethodsShort(methods)) };
 }
 
-export function storeCopy(options: CheckoutOptions, fixedPostName: string | null): StoreCopy {
+export function storeCopy(options: CheckoutOptions, fixedPost: PickupPost | null): StoreCopy {
+  const fixedPostName = fixedPost?.name ?? null;
   const homeDelivery = options.homeDelivery.enabled && hasOnlinePayment(options.paymentMethods);
   const fixed = options.pickup.mode === 'FIXED';
   let pickupPlace = 'na loja Super7 que escolher';
@@ -52,6 +56,7 @@ export function storeCopy(options: CheckoutOptions, fixedPostName: string | null
     homeDelivery,
     fixedPickup: fixed,
     pickupPlace,
+    pickupPost: fixed ? fixedPost : null,
     giftEnabled: options.giftEnabled,
     pickup: { title: 'Levante no posto', text: homeDelivery ? `${store} ou em casa` : capitalise(pickupPlace) },
     gift: options.giftEnabled
@@ -61,11 +66,11 @@ export function storeCopy(options: CheckoutOptions, fixedPostName: string | null
   };
 }
 
-/** `storeCopy` com as definições actuais; a loja fixa só pede a lista das lojas quando é preciso o nome. */
+/** `storeCopy` com as definições actuais; só pede a lista das lojas com a loja fixa (nome e localização). */
 export function useStoreCopy(): StoreCopy {
   const { options } = useCheckoutOptions();
   const fixedId = options.pickup.mode === 'FIXED' ? options.pickup.fixedPostId : null;
   const { data: posts } = usePickupPosts(Boolean(fixedId));
-  const fixedPostName = fixedId ? posts?.find((post) => post.id === fixedId)?.name ?? null : null;
-  return useMemo(() => storeCopy(options, fixedPostName), [options, fixedPostName]);
+  const fixedPost = fixedId ? posts?.find((post) => post.id === fixedId) ?? null : null;
+  return useMemo(() => storeCopy(options, fixedPost), [options, fixedPost]);
 }
