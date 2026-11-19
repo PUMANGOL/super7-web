@@ -3,7 +3,6 @@
  * Desenhos simples em SVG, nas cores da marca (vermelho, verde, dourado e branco).
  */
 import type { CSSProperties } from 'react';
-import { Icon } from '../Icon';
 
 const cssVars = (vars: Record<string, string | number>) => vars as CSSProperties;
 
@@ -208,22 +207,14 @@ function Sinos() {
 }
 
 /**
- * Substitui a contagem do banner com o tema de Natal: o fio de luzes faz de separador, mantém-se a
- * data-limite das encomendas e, por baixo, uma pequena montra natalícia animada.
+ * Montra natalícia animada por baixo dos botões do banner (tema de Natal): o fio de luzes faz de separador e, por
+ * baixo, árvore, presentes, bengala e sinos. Sem prazo nem contagem: a data-limite das encomendas saiu do banner.
  */
-export function CenaNatal({ label, date }: { label: string; date?: string }) {
+export function CenaNatal() {
   return (
-    <div className="s7-natal-cena">
+    <div className="s7-natal-cena" aria-hidden="true">
       <FioLuzes className="s7-natal-cena__luzes" lampadas={11} festoes={3} flecha={9} />
-      {date && (
-        <p className="s7-natal-cena__titulo">
-          <Icon name="gift" />
-          <span>
-            {label} <strong>{date}</strong>
-          </span>
-        </p>
-      )}
-      <div className="s7-natal-cena__aderecos" aria-hidden="true">
+      <div className="s7-natal-cena__aderecos">
         <Arvore />
         <Presentes />
         <Bengala />

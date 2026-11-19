@@ -13,6 +13,7 @@ import {
   type CheckoutOptions,
 } from '../config/store';
 import type { ApiCampaign, ApiCheckoutOptions } from '../types/api';
+import { plural } from '../utils/format';
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
@@ -79,6 +80,11 @@ function mapCheckoutOptions(remote: ApiCheckoutOptions): CheckoutOptions {
     },
     bankTransfer: bank?.iban ? { iban: bank.iban, holder: bank.holder ?? '', bank: bank.bank ?? '' } : null,
     christmasTheme: typeof remote.christmasTheme === 'boolean' ? remote.christmasTheme : null,
+    expressValidityMinutes:
+      Number(remote.expressValidityMinutes) > 0
+        ? Math.round(Number(remote.expressValidityMinutes))
+        : DEFAULT_CHECKOUT_OPTIONS.expressValidityMinutes,
+    receiptConfirmation: remote.receiptConfirmation === true,
   };
 }
 
@@ -95,4 +101,10 @@ export function useCheckoutOptions(): { options: CheckoutOptions; isLoading: boo
 
   const options = useMemo(() => (data ? mapCheckoutOptions(data) : DEFAULT_CHECKOUT_OPTIONS), [data]);
   return { options, isLoading: enabled && isLoading };
+}
+
+/** Prazo para aceitar um pedido Multicaixa Express: em segundos (contagem) e por extenso ("5 minutos"). */
+export function useExpressWindow(): { seconds: number; label: string } {
+  const minutes = useCheckoutOptions().options.expressValidityMinutes;
+  return { seconds: minutes * 60, label: plural(minutes, 'minuto', 'minutos') };
 }

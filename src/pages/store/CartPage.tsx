@@ -7,7 +7,7 @@ import { Breadcrumbs, CatalogError, EmptyState } from '../../components/store/Fe
 import { Icon } from '../../components/store/Icon';
 import { ProductGrid } from '../../components/store/ProductCard';
 import { ProductImage, QuantityInput } from '../../components/store/ProductBits';
-import { useCampaigns } from '../../catalog/useStoreSettings';
+import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
 import { useCart } from '../../context/cart';
 import { useNotice } from '../../context/notice';
 import { useCartDetail, type CartDetailLine } from '../../hooks/useCartDetail';
@@ -96,6 +96,7 @@ export function CartPage() {
   useDocumentTitle('Carrinho');
   const { isActive } = useCampaigns();
   const natalActive = isActive('natal');
+  const { giftEnabled } = useCheckoutOptions().options;
   const { lines } = useCart();
   const { detail, isLoading, isError, refetch } = useCartDetail();
   const inCart = useMemo(() => new Set(lines.map((line) => line.id)), [lines]);
@@ -111,7 +112,7 @@ export function CartPage() {
           <h1>Carrinho</h1>
           {hasLines && <p>{plural(detail.units, 'artigo', 'artigos')} no carrinho</p>}
         </div>
-        <CheckoutSteps current={1} />
+        <CheckoutSteps current="carrinho" />
       </div>
 
       {isError && lines.length > 0 ? (
@@ -160,10 +161,12 @@ export function CartPage() {
             <Link className="s7-btn s7-btn--primario s7-btn--grande s7-btn--bloco" to="/checkout">
               Finalizar compra <Icon name="seta" />
             </Link>
-            <p className="s7-resumo__nota">
-              <Icon name="gift" />
-              <span>Vai oferecer? No passo seguinte pode juntar uma mensagem de oferta.</span>
-            </p>
+            {giftEnabled && (
+              <p className="s7-resumo__nota">
+                <Icon name="gift" />
+                <span>Vai oferecer? No passo seguinte pode juntar uma mensagem de oferta.</span>
+              </p>
+            )}
           </aside>
         </div>
       ) : (

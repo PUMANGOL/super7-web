@@ -113,7 +113,7 @@ export interface ApiCampaign {
   startDate: string;
   /** AAAA-MM-DD */
   endDate: string;
-  /** Prazo das encomendas (ISO 8601 com fuso), para a contagem decrescente. */
+  /** Prazo das encomendas (ISO 8601 com fuso). Já não aparece no banner. */
   ordersUntil: string | null;
   active: boolean;
 }
@@ -134,6 +134,12 @@ export interface ApiCheckoutOptions {
   bankTransfer?: BankTransferDetails | null;
   /** Tema de Natal na loja (adereços natalícios); só se vê durante a campanha de Natal. */
   christmasTheme?: boolean;
+  /** Livros visíveis na loja (definição geral do back-office). */
+  booksVisible?: boolean;
+  /** Minutos para aceitar cada pedido Multicaixa Express no telemóvel. */
+  expressValidityMinutes?: number;
+  /** true: o cliente confirma o levantamento ("Levantei!") com `POST /order/{id}/received`. */
+  receiptConfirmation?: boolean;
 }
 
 /** Definições da loja (back-office): `GET /settings` e `PUT /settings`. */
@@ -151,6 +157,8 @@ export interface StoreSettings {
   ibanBank: string | null;
   /** Tema de Natal na loja. Ausente na resposta = a API ainda não guarda esta opção. */
   christmasTheme?: boolean;
+  /** Livros na loja, todos de uma vez. Ausente na resposta = a API ainda não guarda esta opção. */
+  booksVisible?: boolean;
   /** Só na resposta: quando e por quem (e-mail) foram alteradas pela última vez. */
   updatedAt?: string | null;
   updatedBy?: string | null;
@@ -282,7 +290,7 @@ export interface OrderPayment {
   entity?: string | null;
   reference?: string | null;
   amount?: number | null;
-  /** Fim da validade do pedido Multicaixa Express (2 minutos). O IBAN não expira sozinho. */
+  /** Fim da validade do pedido Multicaixa Express (5 minutos). O IBAN não expira sozinho. */
   expiresAt?: string | null;
   paidAt?: string | null;
   /** IBAN: comprovativo enviado pelo cliente (nome original, tipo e data). null enquanto não houver. */
@@ -365,6 +373,8 @@ export interface ApiOrder {
   items: ApiOrderItem[];
   status: string;
   createAt: string;
+  /** Quando o cliente confirmou que levantou (ou recebeu) a encomenda ("Levantei!"); null se foi a equipa. */
+  customerConfirmedAt?: string | null;
   /** Hoje é a soma dos itens. Com o campo `deliveryFee`, passa a incluir a taxa de entrega. */
   total: number;
   /** Proposto. */

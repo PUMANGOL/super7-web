@@ -34,6 +34,14 @@ export async function updateProduct(id: string, dto: ProductRequest): Promise<Ap
 }
 
 /** Eliminação lógica: o produto fica `Eliminado` e sai do catálogo. */
+/** Mostrar (`true`) ou ocultar um produto ou livro na loja, sem mexer no resto. ADMIN e MANAGER. */
+export async function setProductVisibility(id: string, available: boolean): Promise<ApiProduct> {
+  const { data } = await apiClient.put<ApiResponse<ApiProduct>>(`/product/${id}/visibility`, null, {
+    params: { available },
+  });
+  return unwrap(data);
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   await apiClient.delete(`/product/${id}`);
 }

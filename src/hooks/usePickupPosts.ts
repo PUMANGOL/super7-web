@@ -4,12 +4,14 @@ import type { PickupPostRequest } from '../types/api';
 
 const KEY = ['pickup-posts'] as const;
 
-export function usePickupPosts() {
+/** Lojas de levantamento. `enabled = false` não as pede (por exemplo, só quando é preciso o nome da loja fixa). */
+export function usePickupPosts(enabled = true) {
   return useQuery({
     queryKey: KEY,
     queryFn: fetchPickupPosts,
     staleTime: 10 * 60 * 1000,
     retry: 1,
+    enabled,
   });
 }
 

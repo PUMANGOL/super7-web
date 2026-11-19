@@ -30,6 +30,8 @@ export interface OrderView {
   compraRef: string | null;
   status: string;
   createdAt: string;
+  /** Quando o cliente confirmou que levantou (ou recebeu) a encomenda ("Levantei!"); null se foi a equipa. */
+  customerConfirmedAt: string | null;
   customer: { fullName: string; phone: string; email: string; nif: string | null };
   pickupPostId: string;
   pickupPost: string;
@@ -98,6 +100,7 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
     compraRef: order.compraRef ?? null,
     status: order.status,
     createdAt: order.createAt,
+    customerConfirmedAt: order.customerConfirmedAt ?? null,
     customer: {
       fullName: order.customer?.fullName ?? '',
       phone: order.customer?.phone ?? '',

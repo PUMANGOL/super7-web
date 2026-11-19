@@ -22,7 +22,7 @@ export interface Campaign {
   startsOn: string;
   /** Último dia da campanha (AAAA-MM-DD, inclusive). */
   endsOn: string;
-  /** Prazo das encomendas, para a contagem decrescente (ISO 8601 com fuso). */
+  /** Prazo das encomendas (ISO 8601 com fuso). Já não aparece no banner. */
   ordersUntil?: string;
   /** Vem de `GET /campaign`; `false` desliga a campanha mesmo dentro das datas. */
   active?: boolean;
@@ -156,8 +156,11 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
 /** Métodos que a loja pode oferecer hoje (definições do back-office). */
 export const STORE_PAYMENT_METHODS: PaymentMethod[] = ['MULTICAIXA_EXPRESS', 'IBAN'];
 
-/** Validade de cada pedido Multicaixa Express na API (app.payment.express-validity-minutes): 2 minutos. */
-export const EXPRESS_WINDOW_SECONDS = 120;
+/**
+ * Minutos para aceitar cada pedido Multicaixa Express (app.payment.express-validity-minutes na API). A API indica-os
+ * em `GET /checkout/options`; este valor vale enquanto não os indicar.
+ */
+export const EXPRESS_VALIDITY_MINUTES = 5;
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   MULTICAIXA_EXPRESS: 'Multicaixa Express',
@@ -202,6 +205,10 @@ export interface CheckoutOptions {
   bankTransfer: BankTransferDetails | null;
   /** Tema de Natal (adereços natalícios). `null`: a API não diz; vale `CHRISTMAS_THEME_DEFAULT`. */
   christmasTheme: boolean | null;
+  /** Minutos para aceitar cada pedido Multicaixa Express no telemóvel. */
+  expressValidityMinutes: number;
+  /** O cliente confirma o levantamento na página da encomenda ("Levantei!"); só com a API que o suporta. */
+  receiptConfirmation: boolean;
 }
 
 /**
@@ -217,6 +224,8 @@ export const DEFAULT_CHECKOUT_OPTIONS: CheckoutOptions = {
   pickup: { mode: 'CUSTOMER_CHOICE', fixedPostId: null },
   bankTransfer: null,
   christmasTheme: null,
+  expressValidityMinutes: EXPRESS_VALIDITY_MINUTES,
+  receiptConfirmation: false,
 };
 
 /**

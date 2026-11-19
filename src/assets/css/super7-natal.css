@@ -378,7 +378,7 @@
   }
 }
 
-/* 6 · Montra natalícia no lugar da contagem (CenaNatal) ------------------------- */
+/* 6 · Montra natalícia por baixo dos botões do banner (CenaNatal) ---------------- */
 .s7-natal-cena {
   position: relative;
   display: grid;
@@ -388,16 +388,6 @@
 }
 .s7-natal-cena__luzes {
   --fio-cor: rgba(255, 255, 255, 0.32);
-}
-.s7-natal-cena__titulo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: var(--s7-t-s);
-  color: rgba(255, 255, 255, 0.82);
-}
-.s7-natal-cena__titulo .s7-ico {
-  color: #f6c85f;
 }
 .s7-natal-cena__aderecos {
   position: relative;

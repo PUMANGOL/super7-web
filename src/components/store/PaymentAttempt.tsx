@@ -6,7 +6,7 @@ import { isValidMobile, normalisePhone } from '../../catalog/checkout';
 import type { ApiOrder } from '../../types/api';
 import { formatCountdown, formatDate, plural } from '../../utils/format';
 import { useServerNow } from '../../utils/serverClock';
-import { EXPRESS_WINDOW_SECONDS } from '../../config/store';
+import { useExpressWindow } from '../../catalog/useStoreSettings';
 import { Icon } from './Icon';
 
 const DIAL_RADIUS = 52;
@@ -20,9 +20,10 @@ export function ExpressTimeLeft({ expiresAt }: { expiresAt: string }) {
   const end = new Date(expiresAt).getTime();
   const valid = !Number.isNaN(end);
   const now = useServerNow(1000, valid);
+  const expressWindow = useExpressWindow();
   if (!valid) return null;
-  // A hora do servidor é medida ao segundo: nunca mais do que os 2 minutos do pedido.
-  const secondsLeft = Math.min(EXPRESS_WINDOW_SECONDS, Math.max(0, Math.ceil((end - now) / 1000)));
+  // A hora do servidor é medida ao segundo: nunca mais do que o prazo do pedido.
+  const secondsLeft = Math.min(expressWindow.seconds, Math.max(0, Math.ceil((end - now) / 1000)));
   const hour = formatDate(expiresAt, { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -40,11 +41,12 @@ export function ExpressTimeLeft({ expiresAt }: { expiresAt: string }) {
 }
 
 /**
- * Ponteiro dos 2 minutos para aceitar o pedido Multicaixa Express: o ponteiro avança a cada segundo e o arco mostra o
- * tempo que falta (fica vermelho nos últimos 30 segundos).
+ * Ponteiro do prazo para aceitar o pedido Multicaixa Express (5 minutos, na API): o ponteiro avança a cada segundo e o
+ * arco mostra o tempo que falta (fica vermelho nos últimos 30 segundos).
  */
 export function ExpressCountdown({ secondsLeft, expiresAt }: { secondsLeft: number; expiresAt: string }) {
-  const fraction = Math.min(1, Math.max(0, secondsLeft / EXPRESS_WINDOW_SECONDS));
+  const expressWindow = useExpressWindow();
+  const fraction = Math.min(1, Math.max(0, secondsLeft / expressWindow.seconds));
   const elapsed = DIAL_LENGTH * (1 - fraction);
   const urgent = secondsLeft <= 30;
 
@@ -107,6 +109,7 @@ interface ExpressRetryFormProps {
 export function ExpressRetryForm({ orderId, initialPhone, submitLabel, onDone }: ExpressRetryFormProps) {
   const [phone, setPhone] = useState(initialPhone ?? '');
   const [error, setError] = useState<string | null>(null);
+  const expressWindow = useExpressWindow();
   const retry = useMutation({
     mutationFn: (value: string) => retryPayment(orderId, { method: 'MULTICAIXA_EXPRESS', phone: value }),
     onSuccess: (order, value) => onDone(order, value),
@@ -142,7 +145,7 @@ export function ExpressRetryForm({ orderId, initialPhone, submitLabel, onDone }:
           }}
         />
         <p className="s7-campo__ajuda" id="s7-express-telemovel-ajuda">
-          Recebe neste número um novo pedido de pagamento e tem 2 minutos para o aceitar.
+          Recebe neste número um novo pedido de pagamento e tem {expressWindow.label} para o aceitar.
         </p>
         <p className="s7-campo__erro" id="s7-express-telemovel-erro" role="alert">
           {error}

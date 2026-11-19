@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../../api/client';
-import { fetchOrder, fetchOrderTracking, getOrderTotal, shortOrderId, uploadPaymentProof } from '../../api/orders';
+import {
+  confirmOrderReceived,
+  fetchOrder,
+  fetchOrderTracking,
+  getOrderTotal,
+  shortOrderId,
+  uploadPaymentProof,
+} from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
 import { getLocalOrder, listLocalOrders, normaliseOrderId, updateLocalOrderPayment } from '../../catalog/localOrders';
 import { toOrderView, type OrderPaymentView, type OrderView } from '../../catalog/orderView';
-import { useCheckoutOptions } from '../../catalog/useStoreSettings';
+import { useCheckoutOptions, useExpressWindow } from '../../catalog/useStoreSettings';
 import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
 import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
-import { CheckoutSteps } from '../../components/store/CheckoutSteps';
+import { CheckoutSteps, type CheckoutStep } from '../../components/store/CheckoutSteps';
 import { Breadcrumbs } from '../../components/store/Feedback';
 import { Icon } from '../../components/store/Icon';
 import { PaidDialog } from '../../components/store/PaidDialog';
@@ -20,7 +27,7 @@ import {
   IbanSwitchButton,
 } from '../../components/store/PaymentAttempt';
 import { ProductImage } from '../../components/store/ProductBits';
-import { EXPRESS_WINDOW_SECONDS, hasApiFeature, PAYMENT_METHOD_LABELS } from '../../config/store';
+import { hasApiFeature, PAYMENT_METHOD_LABELS } from '../../config/store';
 import { ORDER_STATUS } from '../../constants/orderStatus';
 import { useAuth } from '../../context/auth';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -29,7 +36,7 @@ import type { ApiOrder, OrderCustomer, OrderPayment } from '../../types/api';
 import { formatCountdown, formatDate, formatKz, formatPhone } from '../../utils/format';
 import { serverNow, useServerNow } from '../../utils/serverClock';
 
-type StepKey = 'received' | 'awaiting' | 'paid' | 'preparing' | 'ready';
+type StepKey = 'received' | 'awaiting' | 'paid' | 'preparing' | 'ready' | 'delivered';
 
 /** Pago antes do levantamento ou da entrega (Multicaixa Express, IBAN; encomendas antigas por referência). */
 function isOnline(view: OrderView): boolean {
@@ -41,10 +48,10 @@ function normalisedStatus(view: OrderView): string {
 }
 
 /** Passo atingido (como no layout: o passo actual é o último estado alcançado). */
-function currentStep(view: OrderView): StepKey | 'done' {
+function currentStep(view: OrderView): StepKey {
   switch (normalisedStatus(view)) {
     case ORDER_STATUS.DELIVERED:
-      return 'done';
+      return 'delivered';
     case ORDER_STATUS.READY:
       return 'ready';
     case ORDER_STATUS.PROCESSING:
@@ -74,6 +81,39 @@ function orderTitle(view: OrderView): string {
   }
 }
 
+/** Passo da barra "Passos da encomenda" (Carrinho … Levantei!); null numa encomenda cancelada. */
+function orderStep(view: OrderView): CheckoutStep | null {
+  switch (normalisedStatus(view)) {
+    case ORDER_STATUS.CANCELLED:
+      return null;
+    case ORDER_STATUS.DELIVERED:
+      return 'levantada';
+    case ORDER_STATUS.READY:
+      return 'pronto';
+    case ORDER_STATUS.PROCESSING:
+      return 'preparacao';
+    default:
+      if (!isOnline(view)) return 'dados';
+      return view.payment.status === 'PAID' ? 'pago' : 'pagamento';
+  }
+}
+
+/** Barra com os passos da encomenda no topo da página; `current` fixa o passo (por exemplo, à espera do pagamento). */
+function OrderStepsBar({ view, current }: { view: OrderView; current?: CheckoutStep }) {
+  const step = current ?? orderStep(view);
+  if (!step) return null;
+  return (
+    <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
+      <CheckoutSteps current={step} homeDelivery={view.deliveryType === 'HOME_DELIVERY'} payOnPickup={!isOnline(view)} />
+    </div>
+  );
+}
+
+/** "sábado, 18 de novembro, às 19:30" (data e hora curtas para a confirmação do levantamento). */
+function formatMoment(iso: string): string {
+  return formatDate(iso, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+
 function StatusSteps({ view }: { view: OrderView }) {
   const home = view.deliveryType === 'HOME_DELIVERY';
   const steps: { key: StepKey; title: string; note: string }[] = [
@@ -92,14 +132,26 @@ function StatusSteps({ view }: { view: OrderView }) {
     home
       ? { key: 'ready', title: 'A caminho', note: 'Entrega na morada indicada' }
       : { key: 'ready', title: 'Pronta a levantar', note: isOnline(view) ? view.pickupPost || 'Na loja que escolheu' : 'Pagamento no levantamento' },
+    {
+      key: 'delivered',
+      title: home ? 'Recebida' : 'Levantada',
+      note: view.customerConfirmedAt
+        ? `Confirmado por si a ${formatMoment(view.customerConfirmedAt)}`
+        : home
+          ? 'Confirme quando a receber'
+          : 'Confirme quando a levantar',
+    },
   ];
   const current = currentStep(view);
-  const currentIndex = current === 'done' ? steps.length : steps.findIndex((step) => step.key === current);
+  const currentIndex = steps.findIndex((step) => step.key === current);
+  // Levantada (ou recebida) é o fim: todos os passos ficam feitos, o último também.
+  const finished = current === 'delivered';
 
   return (
     <ol className="s7-estado">
       {steps.map((step, index) => {
-        const classes = [index < currentIndex ? 's7-estado--feito' : '', index === currentIndex ? 's7-estado--actual' : '']
+        const done = index < currentIndex || finished;
+        const classes = [done ? 's7-estado--feito' : '', index === currentIndex && !finished ? 's7-estado--actual' : '']
           .filter(Boolean)
           .join(' ');
         return (
@@ -232,6 +284,19 @@ const EXPRESS_POLL_MS = 5000;
 const IBAN_POLL_MS = 15000;
 /** Depois do prazo, a API ainda leva uns segundos a dar o pagamento como expirado; ao fim de 5 min deixa de se perguntar. */
 const EXPRESS_POLL_GRACE_MS = 5 * 60 * 1000;
+/** Paga e a caminho do levantamento: de minuto a minuto, para o "Levantei!" aparecer quando a loja a der como pronta. */
+const PROGRESS_POLL_MS = 60 * 1000;
+
+/** Paga e ainda por levantar (recebida, em preparação ou pronta): a loja vai mudando o estado. */
+function awaitingPickup(order: ApiOrder | undefined): boolean {
+  if (!order || order.payment?.status !== 'PAID') return false;
+  return ![ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED].includes(order.status as typeof ORDER_STATUS.CANCELLED);
+}
+
+/** O cliente pode confirmar o levantamento: pronta para entrega e paga. */
+function readyToConfirm(order: ApiOrder | undefined): boolean {
+  return Boolean(order && order.status === ORDER_STATUS.READY && order.payment?.status === 'PAID');
+}
 
 /** IBAN ainda por confirmar pela loja: o cliente fica no passo "Aguarda pagamento" (transferência e comprovativo). */
 function awaitingIbanPayment(order: ApiOrder | undefined): boolean {
@@ -261,7 +326,7 @@ function instant(iso: string | null | undefined): number | null {
 }
 
 /**
- * Multicaixa Express ainda por confirmar: volta-se a perguntar à API até 5 minutos depois do fim dos 2 minutos (um
+ * Multicaixa Express ainda por confirmar: volta-se a perguntar à API até 5 minutos depois do fim do prazo (um
  * pagamento aceite no último segundo ainda pode chegar). `now` é a hora do servidor.
  */
 function awaitingExpressPayment(order: ApiOrder | undefined, now: number): boolean {
@@ -270,7 +335,7 @@ function awaitingExpressPayment(order: ApiOrder | undefined, now: number): boole
   return end === null || now < end + EXPRESS_POLL_GRACE_MS;
 }
 
-/** Os 2 minutos do pedido Express acabaram e a API ainda não o deu como expirado (fá-lo de 15 em 15 segundos). */
+/** O prazo do pedido Express acabou e a API ainda não o deu como expirado (fá-lo de 15 em 15 segundos). */
 function expressTimeUp(order: ApiOrder | undefined, now: number): boolean {
   const end = instant(order?.payment?.expiresAt);
   return pendingExpress(order) && end !== null && now >= end;
@@ -284,7 +349,7 @@ function withinHold(order: ApiOrder | undefined, now: number): boolean {
 }
 
 /**
- * Pedido Multicaixa Express recusado, expirado ou com os 2 minutos acabados, e a encomenda ainda reservada: o cliente
+ * Pedido Multicaixa Express recusado, expirado ou com o prazo acabado, e a encomenda ainda reservada: o cliente
  * pede outro pagamento logo no fim da contagem, sem esperar que a API marque o pedido como expirado (a API aceita
  * uma nova tentativa assim que o prazo do pedido actual termina).
  */
@@ -348,7 +413,7 @@ function OrderSummary({ view }: { view: OrderView }) {
 
 /**
  * Passo "Aguarda pagamento" do Multicaixa Express: a API enviou o pedido de pagamento (fila compra.online) e a página
- * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (2 minutos, na API) e de `now`, a hora do
+ * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (5 minutos, na API) e de `now`, a hora do
  * servidor actualizada a cada segundo pelo OrderLoader: recarregar a página não a reinicia, e um relógio do dispositivo
  * desacertado não a muda. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando o pagamento é
  * confirmado, falha ou o tempo acaba, a página passa sozinha para o passo seguinte.
@@ -357,8 +422,9 @@ function ExpressPaymentWait({ view, now }: { view: OrderView; now: number }) {
   const { payment } = view;
   const amount = payment.amount ?? view.total;
   const end = instant(payment.expiresAt);
-  // A hora do servidor é medida ao segundo: nunca mais do que os 2 minutos do pedido ("2:01").
-  const secondsLeft = end === null ? null : Math.min(EXPRESS_WINDOW_SECONDS, Math.max(0, Math.ceil((end - now) / 1000)));
+  const expressWindow = useExpressWindow();
+  // A hora do servidor é medida ao segundo: nunca mais do que o prazo do pedido ("5:01").
+  const secondsLeft = end === null ? null : Math.min(expressWindow.seconds, Math.max(0, Math.ceil((end - now) / 1000)));
   const overdue = secondsLeft === 0;
   const phone = payment.phone ? formatPhone(payment.phone) : null;
   // A contagem também no separador, para quem muda de janela.
@@ -366,9 +432,7 @@ function ExpressPaymentWait({ view, now }: { view: OrderView; now: number }) {
 
   return (
     <>
-      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
-        <CheckoutSteps current={3} />
-      </div>
+      <OrderStepsBar view={view} current="pagamento" />
 
       <header className="s7-confirmacao">
         <span className="s7-confirmacao__ico">
@@ -436,16 +500,14 @@ function PaymentRetry({ view, onRetried }: { view: OrderView; onRetried: (order:
   const { options } = useCheckoutOptions();
   const { payment } = view;
   const amount = payment.amount ?? view.total;
-  // PENDING: os 2 minutos acabaram e a API ainda não marcou o pedido como expirado.
+  // PENDING: o prazo acabou e a API ainda não marcou o pedido como expirado.
   const expired = payment.status !== 'FAILED';
   const checking = payment.status === 'PENDING';
   const ibanAvailable = options.paymentMethods.includes('IBAN');
 
   return (
     <>
-      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
-        <CheckoutSteps current={3} />
-      </div>
+      <OrderStepsBar view={view} current="pagamento" />
 
       <header className="s7-confirmacao s7-confirmacao--aviso">
         <span className="s7-confirmacao__ico">
@@ -516,6 +578,7 @@ interface IbanPaymentWaitProps {
 
 function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) {
   useDocumentTitle('Aguarda pagamento');
+  const expressWindow = useExpressWindow();
   const { state } = useLocation();
   const { options } = useCheckoutOptions();
   const bank = options.bankTransfer;
@@ -563,9 +626,7 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
 
   return (
     <>
-      <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
-        <CheckoutSteps current={3} />
-      </div>
+      <OrderStepsBar view={view} current="pagamento" />
 
       <header className="s7-confirmacao">
         <span className="s7-confirmacao__ico">
@@ -648,7 +709,7 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
               <p>
                 {sent
                   ? 'Já enviou o comprovativo: só pague por Multicaixa Express se ainda não fez a transferência. Vale o primeiro pagamento confirmado.'
-                  : 'Enviamos um pedido de pagamento para o seu telemóvel; aceita-o na aplicação em 2 minutos.'}
+                  : `Enviamos um pedido de pagamento para o seu telemóvel; aceita-o na aplicação em ${expressWindow.label}.`}
               </p>
               <ExpressRetryForm
                 orderId={view.id}
@@ -665,21 +726,107 @@ function IbanPaymentWait({ view, onUploaded, onRetried }: IbanPaymentWaitProps) 
   );
 }
 
-function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boolean }) {
+/**
+ * Encomenda pronta a levantar (ou a caminho), paga: o cliente confirma aqui que a levantou ("Levantei!"). Pede uma
+ * segunda confirmação, porque o passo não volta atrás; a API passa a encomenda a Entregue.
+ */
+function ReceiptConfirmation({ view, onConfirmed }: { view: OrderView; onConfirmed: (order: ApiOrder) => void }) {
+  const home = view.deliveryType === 'HOME_DELIVERY';
+  const [asking, setAsking] = useState(false);
+  const yesRef = useRef<HTMLButtonElement>(null);
+  const confirm = useMutation({
+    mutationFn: () => confirmOrderReceived(view.id),
+    onSuccess: onConfirmed,
+  });
+  useEffect(() => {
+    if (asking) yesRef.current?.focus();
+  }, [asking]);
+  const where = view.pickupPost ? `na loja ${view.pickupPost}` : 'na loja Super7';
+
+  return (
+    <section className="s7-bloco s7-levantar" aria-labelledby="s7-levantar-titulo">
+      <span className="s7-levantar__ico" aria-hidden="true">
+        <Icon name={home ? 'camiao' : 'loja'} />
+      </span>
+      <div className="s7-levantar__texto">
+        <h2 id="s7-levantar-titulo">{home ? 'A sua encomenda está a caminho' : 'A sua encomenda está pronta'}</h2>
+        <p>
+          {home
+            ? 'Quando a receber, confirme aqui.'
+            : `Levante-a ${where}${view.compraRef ? ` com a referência ${view.compraRef}` : ''}. Depois de a levantar, confirme aqui.`}
+        </p>
+      </div>
+      <div className="s7-levantar__accoes">
+        {asking ? (
+          <>
+            <p className="s7-levantar__pergunta" id="s7-levantar-pergunta">
+              {home ? 'Já tem a encomenda consigo?' : 'Já levantou a encomenda?'}
+            </p>
+            <button
+              ref={yesRef}
+              type="button"
+              className="s7-btn s7-btn--primario"
+              aria-describedby="s7-levantar-pergunta"
+              disabled={confirm.isPending}
+              onClick={() => confirm.mutate()}
+            >
+              {confirm.isPending ? 'A confirmar…' : home ? 'Sim, recebi' : 'Sim, levantei'}
+            </button>
+            <button
+              type="button"
+              className="s7-btn s7-btn--contorno"
+              disabled={confirm.isPending}
+              onClick={() => {
+                setAsking(false);
+                confirm.reset();
+              }}
+            >
+              Ainda não
+            </button>
+          </>
+        ) : (
+          <button type="button" className="s7-btn s7-btn--primario s7-btn--grande" onClick={() => setAsking(true)}>
+            <Icon name="check" />
+            <span>{home ? 'Recebi!' : 'Levantei!'}</span>
+          </button>
+        )}
+      </div>
+      {confirm.isError && (
+        <p className="s7-levantar__erro" role="alert">
+          {getApiErrorMessage(confirm.error, 'Não foi possível confirmar agora. Tente novamente dentro de alguns minutos.')}
+        </p>
+      )}
+    </section>
+  );
+}
+
+interface OrderDetailsProps {
+  view: OrderView;
+  fromDevice: boolean;
+  /** Com a encomenda pronta e paga, e a API que o suporta: o cliente confirma o levantamento ("Levantei!"). */
+  onConfirmReceived?: (order: ApiOrder) => void;
+}
+
+function OrderDetails({ view, fromDevice, onConfirmReceived }: OrderDetailsProps) {
   const { state } = useLocation();
   const justPlaced = Boolean((state as { placed?: boolean } | null)?.placed);
   const cancelled = view.status === ORDER_STATUS.CANCELLED;
-  const paid = view.payment.status === 'PAID';
+  const delivered = view.status === ORDER_STATUS.DELIVERED;
   const firstName = view.customer.fullName.split(' ')[0];
   useDocumentTitle(`Encomenda ${shortOrderId(view.id)}`);
 
+  let lead: string;
+  if (justPlaced) {
+    lead = `Obrigado${firstName ? `, ${firstName}` : ''}! Enviámos a confirmação para ${view.customer.email}.`;
+  } else if (delivered && view.customerConfirmedAt) {
+    lead = `Confirmou ${view.deliveryType === 'HOME_DELIVERY' ? 'a entrega' : 'o levantamento'} a ${formatMoment(view.customerConfirmedAt)}. Obrigado pela preferência!`;
+  } else {
+    lead = `Registada a ${formatDate(view.createdAt, { day: 'numeric', month: 'long', year: 'numeric' })}${view.customer.fullName ? ` em nome de ${view.customer.fullName}` : ''}.`;
+  }
+
   return (
     <>
-      {justPlaced && (
-        <div className="s7-pagina-titulo s7-pagina-titulo--etapas">
-          <CheckoutSteps current={paid ? 4 : 3} />
-        </div>
-      )}
+      <OrderStepsBar view={view} />
 
       <header className={cancelled ? 's7-confirmacao s7-confirmacao--cancelada' : 's7-confirmacao'}>
         <span className="s7-confirmacao__ico">
@@ -687,11 +834,7 @@ function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boole
         </span>
         <div>
           <h1>{orderTitle(view)}</h1>
-          <p>
-            {justPlaced
-              ? `Obrigado${firstName ? `, ${firstName}` : ''}! Enviámos a confirmação para ${view.customer.email}.`
-              : `Registada a ${formatDate(view.createdAt, { day: 'numeric', month: 'long', year: 'numeric' })}${view.customer.fullName ? ` em nome de ${view.customer.fullName}` : ''}.`}
-          </p>
+          <p>{lead}</p>
         </div>
         <p className="s7-confirmacao__ref">
           <span>N.º da encomenda</span>
@@ -707,6 +850,7 @@ function OrderDetails({ view, fromDevice }: { view: OrderView; fromDevice: boole
 
       <div className="s7-encomenda">
         <div className="s7-encomenda__col">
+          {onConfirmReceived && <ReceiptConfirmation view={view} onConfirmed={onConfirmReceived} />}
           <section className="s7-bloco" aria-labelledby="s7-estado-titulo">
             <h2 id="s7-estado-titulo">Estado da encomenda</h2>
             {cancelled ? (
@@ -805,6 +949,7 @@ function OrderLoader({ id }: { id: string }) {
   const { can } = useAuth();
   const staff = can('viewOrders');
   const tracking = hasApiFeature('order-tracking');
+  const { receiptConfirmation } = useCheckoutOptions().options;
   const [local, setLocal] = useState(() => getLocalOrder(id));
   // Quem fez a encomenda neste dispositivo vê os passos do pagamento, mesmo com sessão iniciada no back-office.
   const customer = !staff || local !== null;
@@ -823,7 +968,8 @@ function OrderLoader({ id }: { id: string }) {
     refetchInterval: (query) => {
       const now = serverNow();
       if (awaitingExpressPayment(query.state.data, now)) return EXPRESS_POLL_MS;
-      return awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data, now) ? IBAN_POLL_MS : false;
+      if (awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data, now)) return IBAN_POLL_MS;
+      return awaitingPickup(query.state.data) ? PROGRESS_POLL_MS : false;
     },
   });
   const { refetch } = remote;
@@ -839,7 +985,7 @@ function OrderLoader({ id }: { id: string }) {
   );
   const now = useServerNow(1000, unpaid);
   const timeUp = expressTimeUp(remote.data, now);
-  // No fim dos 2 minutos pergunta logo à API: um pagamento aceite no último segundo aparece sem esperar pela consulta.
+  // No fim do prazo pergunta logo à API: um pagamento aceite no último segundo aparece sem esperar pela consulta.
   useEffect(() => {
     if (timeUp) void refetch();
   }, [timeUp, refetch]);
@@ -866,6 +1012,12 @@ function OrderLoader({ id }: { id: string }) {
       });
       if (saved) setLocal(saved);
     }
+  };
+
+  // "Levantei!": a resposta traz a encomenda como no seguimento; volta-se a pedi-la para a equipa ver os dados todos.
+  const onReceived = (updated: ApiOrder) => {
+    queryClient.setQueryData(queryKey, updated);
+    void refetch();
   };
 
   const order = remote.data ?? local?.order ?? null;
@@ -911,7 +1063,13 @@ function OrderLoader({ id }: { id: string }) {
       />
     );
   } else {
-    screen = <OrderDetails view={view} fromDevice={!remote.data} />;
+    screen = (
+      <OrderDetails
+        view={view}
+        fromDevice={!remote.data}
+        onConfirmReceived={customer && receiptConfirmation && readyToConfirm(remote.data) ? onReceived : undefined}
+      />
+    );
   }
 
   return (

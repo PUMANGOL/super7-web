@@ -338,6 +338,12 @@ function OrderDetail({ order }: { order: ApiOrder }) {
                     {status === ORDER_STATUS.PENDING ? 'À espera de ser preparada' : status === ORDER_STATUS.PROCESSING ? 'A ser preparada na loja' : 'À espera do cliente ou do estafeta'}
                   </span>
                 )}
+                {status === ORDER_STATUS.DELIVERED && order.customerConfirmedAt && (
+                  <span className="encomenda-sub">
+                    {view.deliveryType === 'HOME_DELIVERY' ? 'Entrega' : 'Levantamento'} confirmado pelo cliente a{' '}
+                    {formatDate(order.customerConfirmedAt)}
+                  </span>
+                )}
               </div>
               {forward && (
                 <>

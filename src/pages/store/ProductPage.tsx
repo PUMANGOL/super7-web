@@ -18,8 +18,8 @@ import { CabazStock, LimitedStockBadge, Price, ProductImage, QuantityInput, Stoc
 import { Azevinho } from '../../components/store/natal/Aderecos';
 import { useTemaNatal } from '../../components/store/natal/tema';
 import { CAMPAIGNS } from '../../config/store';
-import { hasOnlinePayment, paymentMethodsShort } from '../../catalog/paymentCopy';
-import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
+import { useStoreCopy } from '../../catalog/storeCopy';
+import { useCampaigns } from '../../catalog/useStoreSettings';
 import { useAddToCart } from '../../hooks/useAddToCart';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { formatKz } from '../../utils/format';
@@ -179,7 +179,7 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
   const navigate = useNavigate();
   const addToCart = useAddToCart();
   const [qty, setQty] = useState(1);
-  const { paymentMethods, homeDelivery } = useCheckoutOptions().options;
+  const copy = useStoreCopy();
 
   const available = isInStock(product);
   const max = maxOrderQuantity(product);
@@ -266,28 +266,21 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
             <li>
               <Icon name="pin" />
               <span>
-                <strong>Levantamento na loja Super7</strong> do posto Pumangol que escolher, sem custo de entrega
-                {homeDelivery.enabled && hasOnlinePayment(paymentMethods) ? ', ou entrega na sua morada.' : '.'}
+                <strong>Levantamento {copy.pickupPlace}</strong>, sem custo de entrega
+                {copy.homeDelivery ? ', ou entrega na sua morada.' : '.'}
               </span>
             </li>
             <li>
               <Icon name="gift" />
               <span>
-                <strong>Pronto a oferecer.</strong> Junte uma mensagem de oferta ao finalizar a compra.
+                <strong>Pronto a oferecer.</strong>{' '}
+                {copy.giftEnabled ? 'Junte uma mensagem de oferta ao finalizar a compra.' : 'Embalado com laço.'}
               </span>
             </li>
             <li>
               <Icon name="dinheiro" />
               <span>
-                {hasOnlinePayment(paymentMethods) ? (
-                  <>
-                    <strong>Pagamento Multicaixa</strong> {paymentMethodsShort(paymentMethods)}.
-                  </>
-                ) : (
-                  <>
-                    <strong>Paga no levantamento,</strong> com Multicaixa ou em numerário.
-                  </>
-                )}
+                <strong>{copy.payment.title}.</strong> {copy.payment.text}.
               </span>
             </li>
           </ul>

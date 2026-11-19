@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import lojaAtendimento from '../../assets/img/loja-atendimento.webp';
 import lojaEquipa from '../../assets/img/loja-equipa.webp';
 import lojaLubrificantes from '../../assets/img/loja-lubrificantes.webp';
-import { hasOnlinePayment, paymentMethodsSentence, paymentMethodsShort } from '../../catalog/paymentCopy';
+import { paymentMethodsSentence } from '../../catalog/paymentCopy';
 import { discountPercent, inCampaign, queryProducts, sortCabazes } from '../../catalog/query';
+import { useStoreCopy, type StoreCopy } from '../../catalog/storeCopy';
 import type { Catalog, Product } from '../../catalog/types';
 import { useCatalog } from '../../catalog/useCatalog';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
 import { CabazCard, CabazCardSkeleton } from '../../components/store/CabazCard';
-import { Countdown } from '../../components/store/Countdown';
 import { Azevinho, CenaNatal, EnfeitesDisco, FioLuzes } from '../../components/store/natal/Aderecos';
 import { useTemaNatal } from '../../components/store/natal/tema';
 import { HeroCabazes } from '../../components/store/HeroCabazes';
@@ -19,7 +19,7 @@ import { ProductCard, ProductCardSkeleton, ProductGrid } from '../../components/
 import { useContagemAte, useHeroMotion } from '../../components/store/useHeroMotion';
 import type { Campaign } from '../../config/store';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { formatDate, formatKz, plural } from '../../utils/format';
+import { formatKz, plural } from '../../utils/format';
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -49,6 +49,7 @@ function selectHomeData(catalog: Catalog | undefined): HomeData {
 
 interface ChristmasHeroProps {
   campaign: Campaign;
+  copy: StoreCopy;
   cabazes: Product[];
   fromPrice: number | null;
   showClearance: boolean;
@@ -88,7 +89,7 @@ function SeloPreco({ value }: { value: number }) {
   );
 }
 
-function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: ChristmasHeroProps) {
+function ChristmasHero({ campaign, copy, cabazes, fromPrice, showClearance }: ChristmasHeroProps) {
   const year = campaign.endsOn.slice(0, 4);
   // O nome vindo de GET /campaign pode já trazer o ano ("Boas Festas 2026").
   const title = campaign.name.includes(year) ? campaign.name : `${campaign.name} ${year}`;
@@ -126,8 +127,9 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
             <em className="s7-hero__palavra" style={word(4)}>cesta Super7</em>
           </h1>
           <p className="s7-hero__intro">
-            Cestas prontas a oferecer a clientes, colaboradores e família. Encomende online e levante na loja
-            Super7 do posto Pumangol mais próximo.
+            Cestas prontas a oferecer a clientes, colaboradores e família. Encomende online e levante{' '}
+            {copy.fixedPickup ? copy.pickupPlace : 'na loja Super7 do posto Pumangol de Talatona'}
+            {copy.homeDelivery ? ', ou receba em casa' : ''}.
           </p>
           <div className="s7-hero__accoes">
             <a className="s7-btn s7-btn--campanha s7-btn--grande" href="#cabazes">
@@ -140,14 +142,7 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
               </a>
             )}
           </div>
-          {temaNatal ? (
-            <CenaNatal
-              label="Encomendas de Natal até"
-              date={campaign.ordersUntil ? formatDate(campaign.ordersUntil) : undefined}
-            />
-          ) : (
-            campaign.ordersUntil && <Countdown until={campaign.ordersUntil} label="Encomendas de Natal até" />
-          )}
+          {temaNatal && <CenaNatal />}
         </div>
 
         <div className="s7-hero__palco">
@@ -186,7 +181,7 @@ function ChristmasHero({ campaign, cabazes, fromPrice, showClearance }: Christma
   );
 }
 
-function StoreHero() {
+function StoreHero({ copy }: { copy: StoreCopy }) {
   return (
     <section className="s7-hero" aria-labelledby="s7-hero-titulo">
       <div className="s7-contentor s7-hero__in">
@@ -199,7 +194,8 @@ function StoreHero() {
             A loja do seu posto Pumangol, agora <em>online</em>
           </h1>
           <p className="s7-hero__intro">
-            Encomende os produtos do dia-a-dia e levante-os na loja Super7 que escolher.
+            Encomende os produtos do dia-a-dia e levante-os {copy.pickupPlace}
+            {copy.homeDelivery ? ', ou receba-os em casa' : ''}.
           </p>
           <div className="s7-hero__accoes">
             <Link className="s7-btn s7-btn--campanha s7-btn--grande" to="/catalogo">
@@ -227,9 +223,8 @@ export function HomePage() {
   const { campaigns, isActive } = useCampaigns();
   const natalActive = isActive('natal');
   const escoamentoActive = isActive('escoamento');
-  const { paymentMethods, homeDelivery: delivery } = useCheckoutOptions().options;
-  const onlinePayment = hasOnlinePayment(paymentMethods);
-  const homeDelivery = delivery.enabled && onlinePayment;
+  const { paymentMethods } = useCheckoutOptions().options;
+  const copy = useStoreCopy();
 
   const { cabazes, escoamento, maxDiscount, featured } = useMemo(() => selectHomeData(catalog.data), [catalog.data]);
   const categories = catalog.data?.categories ?? [];
@@ -238,22 +233,32 @@ export function HomePage() {
 
   return (
     <main id="conteudo">
-      {natalActive ? <ChristmasHero campaign={campaigns.natal} cabazes={cabazes} fromPrice={fromPrice} showClearance={showClearance} /> : <StoreHero />}
+      {natalActive ? (
+        <ChristmasHero
+          campaign={campaigns.natal}
+          copy={copy}
+          cabazes={cabazes}
+          fromPrice={fromPrice}
+          showClearance={showClearance}
+        />
+      ) : (
+        <StoreHero copy={copy} />
+      )}
 
       <div className="s7-contentor">
         <ul className="s7-vantagens">
           <li>
             <Icon name="pin" />
             <p>
-              <strong>Levante no posto</strong>
-              <span>Na loja Super7 que escolher</span>
+              <strong>{copy.pickup.title}</strong>
+              <span>{copy.pickup.text}</span>
             </p>
           </li>
           <li>
             <Icon name="gift" />
             <p>
-              <strong>Pronto a oferecer</strong>
-              <span>Com laço e mensagem de oferta</span>
+              <strong>{copy.gift.title}</strong>
+              <span>{copy.gift.text}</span>
             </p>
           </li>
           <li>
@@ -266,8 +271,8 @@ export function HomePage() {
           <li>
             <Icon name="escudo" />
             <p>
-              <strong>{onlinePayment ? 'Pagamento Multicaixa' : 'Pague no levantamento'}</strong>
-              <span>{onlinePayment ? paymentMethodsShort(paymentMethods) : 'Multicaixa ou numerário, na loja'}</span>
+              <strong>{copy.payment.title}</strong>
+              <span>{copy.payment.text}</span>
             </p>
           </li>
         </ul>
@@ -418,10 +423,12 @@ export function HomePage() {
               <p>{capitalise(paymentMethodsSentence(paymentMethods))}.</p>
             </li>
             <li>
-              <h3>Levante no posto</h3>
+              <h3>{copy.pickup.title}</h3>
               <p>
-                Escolha a loja Super7 e a data.
-                {homeDelivery ? ' Se preferir, entregamos na morada que indicar.' : ''}
+                {copy.fixedPickup
+                  ? `Levante ${copy.pickupPlace}, na data que escolher.`
+                  : 'Escolha a loja Super7 e a data.'}
+                {copy.homeDelivery ? ' Se preferir, entregamos na morada que indicar.' : ''}
               </p>
             </li>
           </ol>

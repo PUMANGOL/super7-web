@@ -1045,47 +1045,6 @@ textarea {
   gap: 12px;
 }
 
-.s7-contagem {
-  display: grid;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-}
-.s7-contagem__titulo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: var(--s7-t-s);
-  color: rgba(255, 255, 255, 0.82);
-}
-.s7-contagem__titulo .s7-ico {
-  color: #f6c85f;
-}
-.s7-contagem__blocos {
-  display: flex;
-  gap: 10px;
-}
-.s7-contagem__bloco {
-  display: grid;
-  justify-items: center;
-  min-width: 72px;
-  padding: 10px 12px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--s7-raio);
-  background: rgba(255, 255, 255, 0.07);
-}
-.s7-contagem__bloco b {
-  font: 800 1.75rem / 1 var(--s7-fonte-display);
-  font-variant-numeric: tabular-nums;
-}
-.s7-contagem__bloco span {
-  font-size: var(--s7-t-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
-}
-
 /* Composição dos três cabazes sobre um disco claro, atravessado pela fita */
 .s7-hero__palco {
   position: relative;
@@ -1187,9 +1146,6 @@ textarea {
   }
   .s7-hero__selo b {
     font-size: 1.0625rem;
-  }
-  .s7-contagem__bloco {
-    min-width: 62px;
   }
 }
 @media (max-width: 560px) {

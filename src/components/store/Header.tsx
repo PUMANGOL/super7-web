@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoSuper7 from '../../assets/img/logo-super7.webp';
 import logoSuper7Branco from '../../assets/img/logo-super7-branco.webp';
 import { inCampaign } from '../../catalog/query';
+import { useStoreCopy } from '../../catalog/storeCopy';
 import { useCatalog } from '../../catalog/useCatalog';
 import { useCampaigns } from '../../catalog/useStoreSettings';
 import { useCart } from '../../context/cart';
@@ -29,6 +30,7 @@ function CampaignBand() {
   const { campaigns: CAMPAIGNS, isActive } = useCampaigns();
   const natal = isActive('natal');
   const escoamento = isActive('escoamento');
+  const copy = useStoreCopy();
 
   return (
     <div className="s7-faixa">
@@ -53,7 +55,11 @@ function CampaignBand() {
         </p>
         <p className="s7-faixa__dir">
           <Icon name="pin" />
-          <span>Levante a encomenda na loja Super7 do seu posto Pumangol</span>
+          <span>
+            Levante a encomenda{' '}
+            {copy.fixedPickup ? copy.pickupPlace : 'na loja Super7 do seu posto Pumangol'}
+            {copy.homeDelivery ? ' ou receba-a em casa' : ''}
+          </span>
         </p>
       </div>
     </div>

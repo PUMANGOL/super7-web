@@ -27,7 +27,7 @@ import { useCartDetail } from '../../hooks/useCartDetail';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { usePickupPosts } from '../../hooks/usePickupPosts';
 import type { OrderRequest } from '../../types/api';
-import { formatDate, formatKz } from '../../utils/format';
+import { formatDate, formatKz, plural } from '../../utils/format';
 import { trackMetaPurchase } from '../../utils/metaPixel';
 
 interface CheckoutForm {
@@ -68,7 +68,7 @@ const fieldId = (name: FieldName) => `s7-${name}`;
 const DEFAULT_PAYMENT: PaymentMethod = 'MULTICAIXA_EXPRESS';
 
 const PAYMENT_OPTIONS: Record<PaymentMethod, { icon: IconName; note: string }> = {
-  MULTICAIXA_EXPRESS: { icon: 'telemovel', note: 'Confirma o pagamento na aplicação, em 2 minutos' },
+  MULTICAIXA_EXPRESS: { icon: 'telemovel', note: 'Confirma o pagamento na aplicação, em {prazo}' },
   IBAN: { icon: 'recibo', note: 'Transfere e envia o comprovativo (PDF ou imagem)' },
   REFERENCE: { icon: 'cartao', note: 'Num Multicaixa ou no homebanking' },
   IN_STORE: { icon: 'dinheiro', note: 'No acto do levantamento' },
@@ -187,6 +187,7 @@ export function CheckoutPage() {
   const pickupPosts = usePickupPosts();
   const { campaigns, isActive } = useCampaigns();
   const { options } = useCheckoutOptions();
+  const expressWindow = plural(options.expressValidityMinutes, 'minuto', 'minutos');
   const mutation = useMutation({ mutationFn: createOrder });
   const [sendingProof, setSendingProof] = useState(false);
 
@@ -443,7 +444,7 @@ export function CheckoutPage() {
         <div>
           <h1>Finalizar compra</h1>
         </div>
-        <CheckoutSteps current={2} />
+        <CheckoutSteps current="dados" />
       </div>
 
       {empty && submitErrors.length > 0 ? (
@@ -717,7 +718,7 @@ export function CheckoutPage() {
                     onChange={() => set('paymentMethod', method)}
                     icon={PAYMENT_OPTIONS[method].icon}
                     title={PAYMENT_METHOD_LABELS[method]}
-                    note={PAYMENT_OPTIONS[method].note}
+                    note={PAYMENT_OPTIONS[method].note.replace('{prazo}', expressWindow)}
                   />
                 ))}
               </div>
@@ -747,7 +748,7 @@ export function CheckoutPage() {
                 <p className="s7-passo__info s7-passo__info--depois">
                   <Icon name="relogio" />
                   <span>
-                    Depois de confirmar a encomenda, tem <strong>2 minutos</strong> para aceitar o pagamento na
+                    Depois de confirmar a encomenda, tem <strong>{expressWindow}</strong> para aceitar o pagamento na
                     aplicação Multicaixa Express.
                   </span>
                 </p>

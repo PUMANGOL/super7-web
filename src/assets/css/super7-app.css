@@ -257,6 +257,90 @@
   justify-content: flex-end;
   padding-bottom: 16px;
 }
+
+/* Passos da encomenda (CheckoutSteps.tsx): os sete numa linha; quando não cabem, a linha desliza na horizontal. */
+.s7-etapas {
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  padding-block: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.s7-etapas::-webkit-scrollbar {
+  display: none;
+}
+.s7-etapas li {
+  flex: none;
+  white-space: nowrap;
+}
+/* "Levantei!": encomenda pronta e paga, o cliente confirma o levantamento (OrderPage.tsx, ReceiptConfirmation). */
+.s7-levantar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 20px;
+  border-color: rgba(1, 118, 73, 0.35);
+  background: var(--s7-verde-claro);
+}
+.s7-levantar__ico {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--s7-verde);
+  color: #fff;
+}
+.s7-levantar__ico .s7-ico {
+  width: 26px;
+  height: 26px;
+}
+.s7-levantar__texto h2 {
+  margin-bottom: 4px;
+  font-size: var(--s7-t-h3);
+  font-weight: 800;
+}
+.s7-levantar__texto p {
+  color: var(--s7-tinta-2);
+}
+.s7-levantar__accoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+}
+.s7-levantar__pergunta {
+  flex-basis: 100%;
+  font-weight: 700;
+  text-align: right;
+}
+.s7-levantar__erro {
+  grid-column: 1 / -1;
+  font-weight: 700;
+  color: var(--s7-vermelho-escuro);
+}
+@media (max-width: 640px) {
+  .s7-levantar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .s7-levantar__accoes {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+  .s7-levantar__accoes .s7-btn {
+    flex: 1 1 auto;
+  }
+  .s7-levantar__pergunta {
+    text-align: left;
+  }
+}
+
+.s7-etapas li + li::before {
+  width: 20px;
+}
 .s7-confirmacao__ref b {
   font-size: var(--s7-t-s);
   overflow-wrap: anywhere;
@@ -334,7 +418,7 @@
   margin-top: 4px;
 }
 
-/* Ponteiro dos 2 minutos do Multicaixa Express (PaymentAttempt.tsx) */
+/* Ponteiro do prazo do Multicaixa Express (PaymentAttempt.tsx) */
 .s7-cronometro {
   display: flex;
   align-items: center;

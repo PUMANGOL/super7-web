@@ -9,6 +9,7 @@ import {
   type PaymentMethod,
   type PickupMode,
 } from '../../config/store';
+import { useExpressWindow } from '../../catalog/useStoreSettings';
 import { useAuth } from '../../context/auth';
 import { useToast } from '../../context/toast';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -21,7 +22,7 @@ const SETTINGS_KEY = ['store-settings'];
 
 const METHOD_NOTES: Partial<Record<PaymentMethod, string>> = {
   MULTICAIXA_EXPRESS:
-    'O cliente recebe o pedido na aplicação e tem 2 minutos para aceitar. A confirmação é automática. Só aparece na loja com o serviço de pagamentos ligado na API.',
+    'O cliente recebe o pedido na aplicação e tem {prazo} para aceitar. A confirmação é automática. Só aparece na loja com o serviço de pagamentos ligado na API.',
   IBAN: 'O cliente transfere e envia o comprovativo (PDF ou imagem). A equipa confirma o pagamento no detalhe da encomenda.',
 };
 
@@ -120,6 +121,7 @@ function SettingsForm({
   const [form, setForm] = useState<FormState>(() => toForm(initial));
   const [errors, setErrors] = useState<string[]>([]);
   const posts = usePickupPosts();
+  const expressWindow = useExpressWindow();
   const save = useMutation({
     mutationFn: updateStoreSettings,
     onSuccess: (saved) => {
@@ -194,7 +196,7 @@ function SettingsForm({
                 />
                 <span>
                   <strong>{PAYMENT_METHOD_LABELS[method]}</strong>
-                  <small>{METHOD_NOTES[method]}</small>
+                  <small>{METHOD_NOTES[method]?.replace('{prazo}', expressWindow.label)}</small>
                 </span>
               </label>
             ))}

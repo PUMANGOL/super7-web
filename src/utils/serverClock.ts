@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Hora do servidor. Os prazos (como os 2 minutos do Multicaixa Express) vêm da API em hora absoluta; com o relógio do
+ * Hora do servidor. Os prazos (como os 5 minutos do Multicaixa Express) vêm da API em hora absoluta; com o relógio do
  * dispositivo adiantado ou atrasado, a contagem ficava errada (num PC 40 s atrasado, começava em 2:40 e o ponteiro
  * ficava parado). A diferença mede-se uma vez por carregamento, pelo cabeçalho Date do próprio site (mesma origem, por
  * isso legível sem CORS). Os servidores do site e da API acertam a hora pela rede.

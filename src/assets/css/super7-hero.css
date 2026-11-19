@@ -252,62 +252,6 @@
   }
 }
 
-/* 4 · Contagem: os blocos entram a saltar e os números rolam (Countdown.tsx) */
-.s7-hero--natal .s7-contagem__bloco {
-  animation: s7h-bloco 0.6s var(--s7h-mola) both;
-}
-.s7-hero--natal .s7-contagem__bloco:nth-child(1) {
-  animation-delay: 0.85s;
-}
-.s7-hero--natal .s7-contagem__bloco:nth-child(2) {
-  animation-delay: 0.93s;
-}
-.s7-hero--natal .s7-contagem__bloco:nth-child(3) {
-  animation-delay: 1.01s;
-}
-.s7-hero--natal .s7-contagem__bloco:nth-child(4) {
-  animation-delay: 1.09s;
-}
-@keyframes s7h-bloco {
-  from {
-    opacity: 0;
-    scale: 0.6;
-    translate: 0 12px;
-  }
-}
-
-.s7-contagem__bloco b {
-  display: grid;
-  justify-items: center;
-  overflow: hidden;
-  perspective: 220px;
-}
-.s7-contagem__bloco b > span {
-  grid-area: 1 / 1;
-  font-size: inherit;
-  letter-spacing: normal;
-  text-transform: none;
-  color: inherit;
-}
-.s7-contagem__entra {
-  animation: s7h-rolo-entra 0.5s var(--s7h-ease, ease-out) both;
-}
-.s7-contagem__sai {
-  animation: s7h-rolo-sai 0.5s var(--s7h-ease, ease-out) forwards;
-}
-@keyframes s7h-rolo-entra {
-  from {
-    opacity: 0;
-    transform: translateY(105%) rotateX(-70deg);
-  }
-}
-@keyframes s7h-rolo-sai {
-  to {
-    opacity: 0;
-    transform: translateY(-105%) rotateX(70deg);
-  }
-}
-
 /* 5 · Montra em 3D: perspectiva de 1100px, centrada no disco */
 .s7-hero--natal .s7-hero__palco {
   perspective: 1100px;
@@ -552,8 +496,5 @@
   }
   .s7-hero__brilhos i {
     opacity: 0.5;
-  }
-  .s7-contagem__sai {
-    display: none;
   }
 }
