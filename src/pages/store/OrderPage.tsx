@@ -13,6 +13,7 @@ import {
 import { pickupPostDetails } from '../../api/pickupPosts';
 import { getLocalOrder, listLocalOrders, normaliseOrderId, updateLocalOrderPayment } from '../../catalog/localOrders';
 import { toOrderView, type OrderPaymentView, type OrderView } from '../../catalog/orderView';
+import { atPickupPost } from '../../catalog/storeCopy';
 import { useCheckoutOptions, useExpressWindow } from '../../catalog/useStoreSettings';
 import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
 import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
@@ -257,7 +258,7 @@ function DeliveryCard({ view }: { view: OrderView }) {
           <strong>{view.deliveryAddress.address}</strong>
         </p>
         <p>{[view.deliveryAddress.district, view.deliveryAddress.reference].filter(Boolean).join(' · ')}</p>
-        {view.pickupPost && <p>Preparada na loja {view.pickupPost}.</p>}
+        {view.pickupPost && <p>Preparada {atPickupPost(view.pickupPost)}.</p>}
       </section>
     );
   }
@@ -745,7 +746,7 @@ function ReceiptConfirmation({ view, onConfirmed }: { view: OrderView; onConfirm
   useEffect(() => {
     if (asking) yesRef.current?.focus();
   }, [asking]);
-  const where = view.pickupPost ? `na loja ${view.pickupPost}` : 'na loja Super7';
+  const where = view.pickupPost ? atPickupPost(view.pickupPost) : 'na loja Super7';
 
   return (
     <section className="s7-bloco s7-levantar" aria-labelledby="s7-levantar-titulo">
@@ -860,8 +861,8 @@ function OrderDetails({ view, fromDevice, onConfirmReceived }: OrderDetailsProps
             <h2 id="s7-estado-titulo">Estado da encomenda</h2>
             {cancelled ? (
               <p>
-                Esta encomenda foi cancelada. Se tiver dúvidas, fale com a loja {view.pickupPost} ou responda ao e-mail que
-                recebeu.
+                Esta encomenda foi cancelada. Se tiver dúvidas, fale connosco
+                {view.pickupPost ? ` ${atPickupPost(view.pickupPost)}` : ''} ou responda ao e-mail que recebeu.
               </p>
             ) : (
               <StatusSteps view={view} />

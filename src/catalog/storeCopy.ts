@@ -19,7 +19,7 @@ export interface StoreCopy {
   homeDelivery: boolean;
   /** Loja de levantamento fixa nas definições (o cliente não escolhe). */
   fixedPickup: boolean;
-  /** "na loja Super7 que escolher" ou, com a loja fixa, "na loja Super7 Talatona". */
+  /** "na loja Super7 que escolher" ou, com a loja fixa, "no PA TALATONA". */
   pickupPlace: string;
   /** A loja fixa (com a localização no mapa, se estiver definida); null quando o cliente escolhe a loja. */
   pickupPost: PickupPost | null;
@@ -31,6 +31,11 @@ export interface StoreCopy {
 }
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** "no PA TALATONA": as lojas têm o nome do posto (PA = posto de abastecimento); outro nome fica "na loja …". */
+export function atPickupPost(name: string): string {
+  return /^(PA|posto)\b/i.test(name.trim()) ? `no ${name}` : `na loja ${name}`;
+}
 
 function paymentHighlight(options: CheckoutOptions): Highlight {
   const methods = options.paymentMethods;
@@ -48,7 +53,7 @@ export function storeCopy(options: CheckoutOptions, fixedPost: PickupPost | null
   const homeDelivery = options.homeDelivery.enabled && hasOnlinePayment(options.paymentMethods);
   const fixed = options.pickup.mode === 'FIXED';
   let pickupPlace = 'na loja Super7 que escolher';
-  if (fixed) pickupPlace = fixedPostName ? `na loja ${fixedPostName}` : 'na loja Super7 indicada';
+  if (fixed) pickupPlace = fixedPostName ? atPickupPost(fixedPostName) : 'na loja Super7 indicada';
   // Texto curto para caber numa linha do destaque: com entrega, a loja (escolhida ou fixa) "ou em casa".
   const store = fixed ? capitalise(pickupPlace) : 'Na loja Super7';
 
