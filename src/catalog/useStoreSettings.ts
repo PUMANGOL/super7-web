@@ -5,6 +5,7 @@ import {
   CAMPAIGN_IDS,
   CAMPAIGNS,
   DEFAULT_CHECKOUT_OPTIONS,
+  EXPRESS_VALIDITY_MINUTES,
   hasApiFeature,
   isCampaignActive,
   STORE_PAYMENT_METHODS,
@@ -104,8 +105,20 @@ export function useCheckoutOptions(): { options: CheckoutOptions; isLoading: boo
   return { options, isLoading: enabled && isLoading };
 }
 
-/** Prazo para aceitar um pedido Multicaixa Express: em segundos (contagem) e por extenso ("5 minutos"). */
-export function useExpressWindow(): { seconds: number; label: string } {
-  const minutes = useCheckoutOptions().options.expressValidityMinutes;
-  return { seconds: minutes * 60, label: plural(minutes, 'minuto', 'minutos') };
+/**
+ * Prazo que o cliente vê para aceitar um pedido Multicaixa Express: em segundos (contagem) e por extenso ("2 minutos").
+ * São os EXPRESS_VALIDITY_MINUTES, ou menos se a API der menos. `leadMs`: quanto antes do `expiresAt` da API acaba a
+ * contagem, quando a API dá mais tempo do que a loja mostra.
+ */
+export function useExpressWindow(): { seconds: number; label: string; leadMs: number } {
+  const apiMinutes = useCheckoutOptions().options.expressValidityMinutes;
+  const minutes = Math.min(EXPRESS_VALIDITY_MINUTES, apiMinutes);
+  return { seconds: minutes * 60, label: plural(minutes, 'minuto', 'minutos'), leadMs: (apiMinutes - minutes) * 60000 };
+}
+
+/** Fim da contagem de um pedido Express (ms): o `expiresAt` da API menos `leadMs` (ver useExpressWindow). */
+export function expressCountdownEnd(expiresAt: string | null | undefined, leadMs: number): number | null {
+  if (!expiresAt) return null;
+  const end = new Date(expiresAt).getTime();
+  return Number.isNaN(end) ? null : end - leadMs;
 }

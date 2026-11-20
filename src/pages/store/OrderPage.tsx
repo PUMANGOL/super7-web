@@ -14,7 +14,7 @@ import { pickupPostDetails } from '../../api/pickupPosts';
 import { getLocalOrder, listLocalOrders, normaliseOrderId, updateLocalOrderPayment } from '../../catalog/localOrders';
 import { toOrderView, type OrderPaymentView, type OrderView } from '../../catalog/orderView';
 import { atPickupPost } from '../../catalog/storeCopy';
-import { useCheckoutOptions, useExpressWindow } from '../../catalog/useStoreSettings';
+import { expressCountdownEnd, useCheckoutOptions, useExpressWindow } from '../../catalog/useStoreSettings';
 import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
 import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
 import { CheckoutSteps, type CheckoutStep } from '../../components/store/CheckoutSteps';
@@ -378,16 +378,16 @@ function isTimeoutFailure(payment: OrderPayment): boolean {
 }
 
 /**
- * O pedido Multicaixa Express dura o prazo todo: um "expirado" do prestador, ou uma falha por tempo esgotado, que
- * chegue antes do fim fica como pendente até a contagem chegar a 0:00. A API já espera pelo fim do prazo; isto cobre
- * uma API anterior. Uma recusa (sem saldo, recusado pelo cliente) e uma encomenda cancelada aparecem logo.
+ * O pedido Multicaixa Express dura a contagem toda: um "expirado" do prestador, ou uma falha por tempo esgotado, que
+ * chegue antes de a contagem chegar a 0:00 fica como pendente até lá (`leadMs`: ver useExpressWindow). Uma recusa
+ * (sem saldo, recusado pelo cliente) e uma encomenda cancelada aparecem logo.
  */
-function withFullExpressWindow(order: ApiOrder | undefined, now: number): ApiOrder | undefined {
+function withFullExpressWindow(order: ApiOrder | undefined, now: number, leadMs: number): ApiOrder | undefined {
   const payment = order?.payment;
   if (!order || !payment || payment.method !== 'MULTICAIXA_EXPRESS' || order.status === ORDER_STATUS.CANCELLED) {
     return order;
   }
-  const end = instant(payment.expiresAt);
+  const end = expressCountdownEnd(payment.expiresAt, leadMs);
   const early = payment.status === 'EXPIRED' || (payment.status === 'FAILED' && isTimeoutFailure(payment));
   if (!early || end === null || now >= end) return order;
   return {
@@ -450,17 +450,18 @@ function OrderSummary({ view }: { view: OrderView }) {
 
 /**
  * Passo "Aguarda pagamento" do Multicaixa Express: a API enviou o pedido de pagamento (fila compra.online) e a página
- * espera que o cliente o aceite na aplicação. A contagem vem de `expiresAt` (5 minutos, na API) e de `now`, a hora do
- * servidor actualizada a cada segundo pelo OrderLoader: recarregar a página não a reinicia, e um relógio do dispositivo
- * desacertado não a muda. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando o pagamento é
- * confirmado, falha ou o tempo acaba, a página passa sozinha para o passo seguinte.
+ * espera que o cliente o aceite na aplicação. A contagem (2 minutos desde o envio do pedido) vem de `expiresAt` e de
+ * `now`, a hora do servidor actualizada a cada segundo pelo OrderLoader: recarregar a página não a reinicia, e um
+ * relógio do dispositivo desacertado não a muda. O OrderLoader volta a pedir a encomenda a cada EXPRESS_POLL_MS; quando
+ * o pagamento é confirmado, falha ou o tempo acaba, a página passa sozinha para o passo seguinte. Se a API der mais
+ * tempo, depois do 0:00 a página fica a confirmar o estado até a API dar o pedido como expirado.
  */
 function ExpressPaymentWait({ view, now }: { view: OrderView; now: number }) {
   const { payment } = view;
   const amount = payment.amount ?? view.total;
-  const end = instant(payment.expiresAt);
   const expressWindow = useExpressWindow();
-  // A hora do servidor é medida ao segundo: nunca mais do que o prazo do pedido ("5:01").
+  const end = expressCountdownEnd(payment.expiresAt, expressWindow.leadMs);
+  // A hora do servidor é medida ao segundo: nunca mais do que o prazo do pedido ("2:01").
   const secondsLeft = end === null ? null : Math.min(expressWindow.seconds, Math.max(0, Math.ceil((end - now) / 1000)));
   const overdue = secondsLeft === 0;
   const phone = payment.phone ? formatPhone(payment.phone) : null;
@@ -500,8 +501,8 @@ function ExpressPaymentWait({ view, now }: { view: OrderView; now: number }) {
                 ? 'O prazo terminou. A confirmar o estado do pagamento…'
                 : 'Ainda não recebemos a confirmação. Esta página actualiza-se sozinha.'}
             </p>
-            {secondsLeft !== null && !overdue && payment.expiresAt && (
-              <ExpressCountdown secondsLeft={secondsLeft} expiresAt={payment.expiresAt} />
+            {secondsLeft !== null && !overdue && end !== null && (
+              <ExpressCountdown secondsLeft={secondsLeft} expiresAt={new Date(end).toISOString()} />
             )}
             <ol className="s7-espera__passos">
               <li>Abra a aplicação Multicaixa Express{phone ? ` do número ${phone}` : ''}.</li>
@@ -991,6 +992,7 @@ function OrderLoader({ id }: { id: string }) {
   const staff = can('viewOrders');
   const tracking = hasApiFeature('order-tracking');
   const { receiptConfirmation } = useCheckoutOptions().options;
+  const { leadMs } = useExpressWindow();
   const [local, setLocal] = useState(() => getLocalOrder(id));
   // Quem fez a encomenda neste dispositivo vê os passos do pagamento, mesmo com sessão iniciada no back-office.
   const customer = !staff || local !== null;
@@ -1008,7 +1010,7 @@ function OrderLoader({ id }: { id: string }) {
     // de uma nova tentativa, de 15 em 15 segundos (um pagamento atrasado ainda pode chegar).
     refetchInterval: (query) => {
       const now = serverNow();
-      const data = withFullExpressWindow(query.state.data, now);
+      const data = withFullExpressWindow(query.state.data, now, leadMs);
       if (awaitingExpressPayment(data, now)) return EXPRESS_POLL_MS;
       if (awaitingIbanPayment(data) || canRetryPayment(data, now)) return IBAN_POLL_MS;
       return awaitingPickup(data) ? PROGRESS_POLL_MS : false;
@@ -1027,7 +1029,7 @@ function OrderLoader({ id }: { id: string }) {
   );
   const now = useServerNow(1000, unpaid);
   // A encomenda da API, com o pedido Express pendente até ao fim do prazo (mesmo que o prestador desista antes).
-  const tracked = withFullExpressWindow(remote.data, now);
+  const tracked = withFullExpressWindow(remote.data, now, leadMs);
   const timeUp = expressTimeUp(tracked, now);
   // No fim do prazo pergunta logo à API: um pagamento aceite no último segundo aparece sem esperar pela consulta.
   useEffect(() => {

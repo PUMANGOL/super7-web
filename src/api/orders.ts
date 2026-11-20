@@ -55,7 +55,7 @@ export async function uploadPaymentProof(id: string, file: File): Promise<OrderP
 
 /**
  * Cliente, sem sessão: pede outro pagamento enquanto a encomenda está reservada e por pagar — novo pedido Multicaixa
- * Express (5 minutos para aceitar, conforme a API) ou mudança para IBAN. Devolve a encomenda como o seguimento (dados limitados).
+ * Express (2 minutos para aceitar) ou mudança para IBAN. Devolve a encomenda como o seguimento (dados limitados).
  */
 export async function retryPayment(id: string, request: PaymentRetryRequest): Promise<ApiOrder> {
   const { data } = await apiClient.post<ApiResponse<ApiOrder>>(`/order/${id}/payment`, request);

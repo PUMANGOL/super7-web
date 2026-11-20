@@ -157,10 +157,11 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
 export const STORE_PAYMENT_METHODS: PaymentMethod[] = ['MULTICAIXA_EXPRESS', 'IBAN'];
 
 /**
- * Minutos para aceitar cada pedido Multicaixa Express (app.payment.express-validity-minutes na API). A API indica-os
- * em `GET /checkout/options`; este valor vale enquanto não os indicar.
+ * Minutos que a loja dá ao cliente para aceitar cada pedido Multicaixa Express: a contagem e os textos usam-nos, a
+ * contar do envio do pedido, mesmo que a API (app.payment.express-validity-minutes, em `GET /checkout/options`) dê
+ * mais tempo. Também é o prazo da API quando ela não o indica.
  */
-export const EXPRESS_VALIDITY_MINUTES = 5;
+export const EXPRESS_VALIDITY_MINUTES = 2;
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   MULTICAIXA_EXPRESS: 'Multicaixa Express',

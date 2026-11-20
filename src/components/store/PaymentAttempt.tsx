@@ -6,7 +6,7 @@ import { isValidMobile, normalisePhone } from '../../catalog/checkout';
 import type { ApiOrder } from '../../types/api';
 import { formatCountdown, formatDate, plural } from '../../utils/format';
 import { useServerNow } from '../../utils/serverClock';
-import { useExpressWindow } from '../../catalog/useStoreSettings';
+import { expressCountdownEnd, useExpressWindow } from '../../catalog/useStoreSettings';
 import { Icon } from './Icon';
 
 const DIAL_RADIUS = 52;
@@ -17,14 +17,14 @@ const DIAL_LENGTH = 2 * Math.PI * DIAL_RADIUS;
  * pagamento, por exemplo quando a equipa abre a encomenda).
  */
 export function ExpressTimeLeft({ expiresAt }: { expiresAt: string }) {
-  const end = new Date(expiresAt).getTime();
-  const valid = !Number.isNaN(end);
-  const now = useServerNow(1000, valid);
   const expressWindow = useExpressWindow();
-  if (!valid) return null;
+  // Fim da contagem que o cliente vê (2 minutos desde o envio), mesmo que a API dê mais tempo.
+  const end = expressCountdownEnd(expiresAt, expressWindow.leadMs);
+  const now = useServerNow(1000, end !== null);
+  if (end === null) return null;
   // A hora do servidor é medida ao segundo: nunca mais do que o prazo do pedido.
   const secondsLeft = Math.min(expressWindow.seconds, Math.max(0, Math.ceil((end - now) / 1000)));
-  const hour = formatDate(expiresAt, { hour: '2-digit', minute: '2-digit' });
+  const hour = formatDate(new Date(end).toISOString(), { hour: '2-digit', minute: '2-digit' });
 
   return (
     <p className={secondsLeft > 0 && secondsLeft <= 30 ? 's7-prazo s7-prazo--fim' : 's7-prazo'}>
@@ -41,7 +41,7 @@ export function ExpressTimeLeft({ expiresAt }: { expiresAt: string }) {
 }
 
 /**
- * Ponteiro do prazo para aceitar o pedido Multicaixa Express (5 minutos, na API): o ponteiro avança a cada segundo e o
+ * Ponteiro do prazo para aceitar o pedido Multicaixa Express (2 minutos): o ponteiro avança a cada segundo e o
  * arco mostra o tempo que falta (fica vermelho nos últimos 30 segundos).
  */
 export function ExpressCountdown({ secondsLeft, expiresAt }: { secondsLeft: number; expiresAt: string }) {

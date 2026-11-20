@@ -7,7 +7,7 @@ import { pickupPostDetails } from '../../api/pickupPosts';
 import { buildOrderNotes, isValidEmail, isValidMobile, isValidViaNumber, normalisePhone, tomorrowIsoDate } from '../../catalog/checkout';
 import { saveLocalOrder } from '../../catalog/localOrders';
 import { CATALOG_QUERY_KEY } from '../../catalog/useCatalog';
-import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
+import { useCampaigns, useCheckoutOptions, useExpressWindow } from '../../catalog/useStoreSettings';
 import { checkProofFile, PROOF_HELP } from '../../catalog/paymentProof';
 import { BankTransferList, ProofFileInput } from '../../components/store/BankTransfer';
 import { CheckoutSteps } from '../../components/store/CheckoutSteps';
@@ -28,7 +28,7 @@ import { useCartDetail } from '../../hooks/useCartDetail';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { usePickupPosts } from '../../hooks/usePickupPosts';
 import type { OrderRequest } from '../../types/api';
-import { formatDate, formatKz, plural } from '../../utils/format';
+import { formatDate, formatKz } from '../../utils/format';
 import { trackMetaPurchase } from '../../utils/metaPixel';
 
 interface CheckoutForm {
@@ -191,7 +191,7 @@ export function CheckoutPage() {
   const pickupPosts = usePickupPosts();
   const { campaigns, isActive } = useCampaigns();
   const { options } = useCheckoutOptions();
-  const expressWindow = plural(options.expressValidityMinutes, 'minuto', 'minutos');
+  const expressWindow = useExpressWindow().label;
   const mutation = useMutation({ mutationFn: createOrder });
   const [sendingProof, setSendingProof] = useState(false);
 
