@@ -284,6 +284,7 @@ function OrderDetail({ order }: { order: ApiOrder }) {
                   )}
                 </ul>
                 {view.customer.nif && <p className="encomenda-sub">NIF {view.customer.nif}</p>}
+                {view.customer.via && <p className="encomenda-sub">N.º Via {view.customer.via}</p>}
                 {view.customer.phone && (
                   <Link to={`${ORDERS_PATH}?q=${encodeURIComponent(view.customer.phone)}`} className="encomenda-ligacao">
                     Outras encomendas deste cliente

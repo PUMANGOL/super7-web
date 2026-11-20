@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getApiErrorMessage, getApiErrorMessages, getApiStatus } from '../../api/client';
 import { createOrder, uploadPaymentProof } from '../../api/orders';
 import { pickupPostDetails } from '../../api/pickupPosts';
-import { buildOrderNotes, isValidEmail, isValidMobile, normalisePhone, tomorrowIsoDate } from '../../catalog/checkout';
+import { buildOrderNotes, isValidEmail, isValidMobile, isValidViaNumber, normalisePhone, tomorrowIsoDate } from '../../catalog/checkout';
 import { saveLocalOrder } from '../../catalog/localOrders';
 import { CATALOG_QUERY_KEY } from '../../catalog/useCatalog';
 import { useCampaigns, useCheckoutOptions } from '../../catalog/useStoreSettings';
@@ -36,6 +36,8 @@ interface CheckoutForm {
   phone: string;
   email: string;
   nif: string;
+  /** Número associado ao Via ou do cartão Via (opcional). */
+  via: string;
   delivery: DeliveryType;
   pickupPostId: string;
   pickupDate: string;
@@ -53,13 +55,13 @@ interface CheckoutForm {
 }
 
 type FieldName =
-  | 'fullName' | 'phone' | 'email' | 'nif' | 'pickupPostId' | 'pickupDate' | 'address' | 'district'
+  | 'fullName' | 'phone' | 'email' | 'nif' | 'via' | 'pickupPostId' | 'pickupDate' | 'address' | 'district'
   | 'addressReference' | 'observations' | 'recipient' | 'giftMessage' | 'paymentPhone' | 'paymentProof';
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 /** Ordem dos campos no ecrã: o foco vai para o primeiro com erro. */
 const FIELD_ORDER: FieldName[] = [
-  'fullName', 'phone', 'email', 'nif', 'pickupPostId', 'pickupDate', 'address', 'district',
+  'fullName', 'phone', 'email', 'nif', 'via', 'pickupPostId', 'pickupDate', 'address', 'district',
   'addressReference', 'observations', 'recipient', 'giftMessage', 'paymentPhone', 'paymentProof',
 ];
 
@@ -97,6 +99,7 @@ function validate(form: CheckoutForm, context: Context): FieldErrors {
   if (!isValidMobile(form.phone)) errors.phone = 'Indique um número de telemóvel com 9 dígitos, começado por 9.';
   if (!form.email.trim()) errors.email = 'Indique o e-mail para receber a confirmação.';
   else if (!isValidEmail(form.email)) errors.email = 'Verifique o endereço de e-mail.';
+  if (!isValidViaNumber(form.via)) errors.via = 'Use só letras, algarismos, espaços, "+" ou "-".';
 
   if (!context.fixedPostId && !form.pickupPostId) {
     errors.pickupPostId = delivery === 'PICKUP' ? 'Escolha a loja onde quer levantar.' : 'Escolha a loja mais próxima da morada.';
@@ -204,6 +207,7 @@ export function CheckoutPage() {
     phone: '',
     email: '',
     nif: '',
+    via: '',
     delivery: 'PICKUP',
     pickupPostId: '',
     pickupDate: minDate,
@@ -308,6 +312,7 @@ export function CheckoutPage() {
       : null;
     const paymentPhone = paymentMethod === 'MULTICAIXA_EXPRESS' ? normalisePhone(form.paymentPhone) : '';
     const nif = form.nif.trim();
+    const via = form.via.trim().replace(/\s+/g, ' ');
 
     const notes = buildOrderNotes({
       deliveryType: delivery,
@@ -317,6 +322,8 @@ export function CheckoutPage() {
       paymentMethod,
       paymentPhone,
       nif,
+      via,
+      viaInNotes: !options.viaCardStored,
       gift,
       observations: form.observations,
       onlyObservations: hasApiFeature('order-fields'),
@@ -330,6 +337,7 @@ export function CheckoutPage() {
         // A API exige a localização: na entrega é o bairro; no levantamento, a zona da loja.
         location: home ? form.district.trim() : selectedPost?.zone || selectedPost?.name || 'Levantamento na loja',
         nif: nif || undefined,
+        viaCardNumber: via || undefined,
       },
       pickupPostId,
       notes: notes || undefined,
@@ -372,6 +380,7 @@ export function CheckoutPage() {
         paymentMethod,
         paymentPhone: paymentPhone || undefined,
         nif: nif || undefined,
+        via: via || undefined,
         gift: gift ?? undefined,
       });
       trackMetaPurchase({
@@ -527,6 +536,24 @@ export function CheckoutPage() {
                     maxLength={CHECKOUT_LIMITS.nif}
                     value={form.nif}
                     onChange={(event) => set('nif', event.target.value)}
+                  />
+                </Field>
+                <Field
+                  name="via"
+                  label={
+                    <>
+                      Número associado ao Via / Número do cartão Via <small>(opcional)</small>
+                    </>
+                  }
+                  error={errors.via}
+                >
+                  <input
+                    {...inputProps('via')}
+                    type="text"
+                    autoComplete="off"
+                    maxLength={CHECKOUT_LIMITS.via}
+                    value={form.via}
+                    onChange={(event) => set('via', event.target.value)}
                   />
                 </Field>
               </div>

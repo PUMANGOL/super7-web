@@ -427,10 +427,6 @@ function ProductForm({ product }: { product: ApiProduct | null }) {
               options={CABAZ_LEVELS.map((level) => ({ value: level, label: LEVEL_LABELS[level] }))}
             />
           </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor={field('badge')}>Selo <small>(opcional)</small></label>
-            <input id={field('badge')} className={inputClass('badge')} disabled={!isCabaz} value={form.badge} onChange={(e) => update('badge', e.target.value)} placeholder="Ex.: A mais completa" />
-          </div>
         </div>
 
         {isCabaz && (

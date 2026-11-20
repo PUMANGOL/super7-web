@@ -32,7 +32,7 @@ export interface OrderView {
   createdAt: string;
   /** Quando o cliente confirmou que levantou (ou recebeu) a encomenda ("Levantei!"); null se foi a equipa. */
   customerConfirmedAt: string | null;
-  customer: { fullName: string; phone: string; email: string; nif: string | null };
+  customer: { fullName: string; phone: string; email: string; nif: string | null; via: string | null };
   pickupPostId: string;
   pickupPost: string;
   deliveryType: DeliveryType;
@@ -106,6 +106,7 @@ export function toOrderView(order: ApiOrder, extras: LocalOrderExtras | null): O
       phone: order.customer?.phone ?? '',
       email: order.customer?.email ?? '',
       nif: order.customer?.nif ?? extras?.nif ?? null,
+      via: order.customer?.viaCardNumber ?? extras?.via ?? null,
     },
     pickupPostId: order.pickupPostId,
     pickupPost: order.pickupPost ?? '',

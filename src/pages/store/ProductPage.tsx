@@ -219,11 +219,7 @@ function ProductDetail({ product, catalog }: { product: Product; catalog: Catalo
       <article className={detailClasses.join(' ')}>
         <div className="s7-detalhe__media">
           <div className="s7-detalhe__selos">
-            {discount > 0 ? (
-              <span className="s7-etiqueta s7-etiqueta--desconto">−{discount}%</span>
-            ) : product.badge ? (
-              <span className="s7-etiqueta s7-etiqueta--natal">{product.badge}</span>
-            ) : null}
+            {discount > 0 && <span className="s7-etiqueta s7-etiqueta--desconto">−{discount}%</span>}
             {available && product.limitedStock && <LimitedStockBadge />}
           </div>
           {temaNatal && product.isCabaz && <Azevinho className="s7-detalhe__azevinho" />}

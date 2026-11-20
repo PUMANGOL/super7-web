@@ -140,6 +140,8 @@ export interface ApiCheckoutOptions {
   expressValidityMinutes?: number;
   /** true: o cliente confirma o levantamento ("Levantei!") com `POST /order/{id}/received`. */
   receiptConfirmation?: boolean;
+  /** true: a API guarda `customer.viaCardNumber`. */
+  viaCardNumber?: boolean;
 }
 
 /** Definições da loja (back-office): `GET /settings` e `PUT /settings`. */
@@ -266,6 +268,8 @@ export interface OrderCustomer {
   location: string;
   /** Proposto: NIF para a factura. */
   nif?: string | null;
+  /** Opcional: número associado ao Via ou do cartão Via. */
+  viaCardNumber?: string | null;
 }
 
 /** Proposto: morada da entrega ao domicílio. */

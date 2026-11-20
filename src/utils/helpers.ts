@@ -28,7 +28,7 @@ export function formatDate(iso: string): string {
 
 export function exportOrdersToXlsx(orders: ApiOrder[]): void {
   const headers = [
-    'N.º', 'Referência da compra', 'Cliente', 'Telefone', 'E-mail', 'Localização', 'NIF', 'Loja', 'Entrega', 'Morada', 'Data de levantamento',
+    'N.º', 'Referência da compra', 'Cliente', 'Telefone', 'E-mail', 'Localização', 'NIF', 'N.º Via', 'Loja', 'Entrega', 'Morada', 'Data de levantamento',
     'Pagamento', 'Estado do pagamento', 'Taxa de entrega (Kz)', 'Total (Kz)', 'Estado', 'Data', 'Artigos', 'Oferta', 'Observações',
   ];
   // Entrega, pagamento e oferta só ficam preenchidos quando a API os devolver (ver docs/api-campos-em-falta.md).
@@ -45,6 +45,7 @@ export function exportOrdersToXlsx(orders: ApiOrder[]): void {
       order.customer.email,
       order.customer.location,
       view.customer.nif ?? '',
+      view.customer.via ?? '',
       order.pickupPost,
       order.deliveryType ? (order.deliveryType === 'HOME_DELIVERY' ? 'Domicílio' : 'Levantamento') : '',
       address,

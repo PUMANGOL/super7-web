@@ -85,6 +85,7 @@ function mapCheckoutOptions(remote: ApiCheckoutOptions): CheckoutOptions {
         ? Math.round(Number(remote.expressValidityMinutes))
         : DEFAULT_CHECKOUT_OPTIONS.expressValidityMinutes,
     receiptConfirmation: remote.receiptConfirmation === true,
+    viaCardStored: remote.viaCardNumber === true,
   };
 }
 

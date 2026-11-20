@@ -362,6 +362,40 @@ function canRetryPayment(order: ApiOrder | undefined, now: number): boolean {
   return payment.status === 'FAILED' || payment.status === 'EXPIRED' || expressTimeUp(order, now);
 }
 
+/**
+ * Falha por tempo esgotado, pelo motivo ou pelo código do prestador (as mesmas palavras que a API). "Cartão expirado"
+ * é uma recusa, por isso "expir" sozinho não conta.
+ */
+const TIMEOUT_WORDS = [
+  'timeout', 'time out', 'tempo esgotado', 'tempo limite', 'esgotou o tempo', 'fora de prazo',
+  'tempo expirado', 'pedido expirado', 'transacao expirada', 'pagamento expirado',
+];
+
+function isTimeoutFailure(payment: OrderPayment): boolean {
+  const text = [payment.failureMessage, payment.failureCode, payment.failureType].filter(Boolean).join(' ');
+  const plain = text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  return TIMEOUT_WORDS.some((word) => plain.includes(word));
+}
+
+/**
+ * O pedido Multicaixa Express dura o prazo todo: um "expirado" do prestador, ou uma falha por tempo esgotado, que
+ * chegue antes do fim fica como pendente até a contagem chegar a 0:00. A API já espera pelo fim do prazo; isto cobre
+ * uma API anterior. Uma recusa (sem saldo, recusado pelo cliente) e uma encomenda cancelada aparecem logo.
+ */
+function withFullExpressWindow(order: ApiOrder | undefined, now: number): ApiOrder | undefined {
+  const payment = order?.payment;
+  if (!order || !payment || payment.method !== 'MULTICAIXA_EXPRESS' || order.status === ORDER_STATUS.CANCELLED) {
+    return order;
+  }
+  const end = instant(payment.expiresAt);
+  const early = payment.status === 'EXPIRED' || (payment.status === 'FAILED' && isTimeoutFailure(payment));
+  if (!early || end === null || now >= end) return order;
+  return {
+    ...order,
+    payment: { ...payment, status: 'PENDING', failureMessage: null, failureCode: null, failureType: null },
+  };
+}
+
 /** "sábado, 18 de novembro, às 19:30". */
 function formatHold(iso: string): string {
   return formatDate(iso, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -904,6 +938,7 @@ function OrderDetails({ view, fromDevice, onConfirmReceived }: OrderDetailsProps
                 </p>
                 <p>{[view.customer.phone && formatPhone(view.customer.phone), view.customer.email].filter(Boolean).join(' · ')}</p>
                 {view.customer.nif && <p>NIF {view.customer.nif}</p>}
+                {view.customer.via && <p>N.º Via {view.customer.via}</p>}
               </section>
             )}
           </div>
@@ -973,9 +1008,10 @@ function OrderLoader({ id }: { id: string }) {
     // de uma nova tentativa, de 15 em 15 segundos (um pagamento atrasado ainda pode chegar).
     refetchInterval: (query) => {
       const now = serverNow();
-      if (awaitingExpressPayment(query.state.data, now)) return EXPRESS_POLL_MS;
-      if (awaitingIbanPayment(query.state.data) || canRetryPayment(query.state.data, now)) return IBAN_POLL_MS;
-      return awaitingPickup(query.state.data) ? PROGRESS_POLL_MS : false;
+      const data = withFullExpressWindow(query.state.data, now);
+      if (awaitingExpressPayment(data, now)) return EXPRESS_POLL_MS;
+      if (awaitingIbanPayment(data) || canRetryPayment(data, now)) return IBAN_POLL_MS;
+      return awaitingPickup(data) ? PROGRESS_POLL_MS : false;
     },
   });
   const { refetch } = remote;
@@ -990,7 +1026,9 @@ function OrderLoader({ id }: { id: string }) {
       remote.data?.status !== ORDER_STATUS.CANCELLED,
   );
   const now = useServerNow(1000, unpaid);
-  const timeUp = expressTimeUp(remote.data, now);
+  // A encomenda da API, com o pedido Express pendente até ao fim do prazo (mesmo que o prestador desista antes).
+  const tracked = withFullExpressWindow(remote.data, now);
+  const timeUp = expressTimeUp(tracked, now);
   // No fim do prazo pergunta logo à API: um pagamento aceite no último segundo aparece sem esperar pela consulta.
   useEffect(() => {
     if (timeUp) void refetch();
@@ -1026,7 +1064,7 @@ function OrderLoader({ id }: { id: string }) {
     void refetch();
   };
 
-  const order = remote.data ?? local?.order ?? null;
+  const order = tracked ?? local?.order ?? null;
   const loading = (staff || tracking) && remote.isLoading;
 
   if (!order && loading) {
@@ -1042,18 +1080,18 @@ function OrderLoader({ id }: { id: string }) {
   // O seguimento público não traz e-mail nem telefone: completa-se com a cópia local, se existir
   // (só os valores preenchidos da API substituem os guardados).
   const merged =
-    remote.data && local
-      ? { ...remote.data, customer: mergeFilled(local.order.customer, remote.data.customer) }
+    tracked && local
+      ? { ...tracked, customer: mergeFilled(local.order.customer, tracked.customer) }
       : order;
   const view = toOrderView(merged, local?.extras ?? null);
   let screen;
   // Só com o estado vindo da API (que se vai actualizando): a cópia local fica sempre "pendente".
   // Pedido Express recusado, expirado ou com o tempo acabado, com a encomenda reservada: repetir ou mudar para IBAN.
-  if (customer && remote.data && canRetryPayment(remote.data, now)) {
+  if (customer && tracked && canRetryPayment(tracked, now)) {
     screen = <PaymentRetry view={view} onRetried={onRetried} />;
-  } else if (customer && remote.data && awaitingExpressPayment(remote.data, now)) {
+  } else if (customer && tracked && awaitingExpressPayment(tracked, now)) {
     screen = <ExpressPaymentWait view={view} now={now} />;
-  } else if (customer && awaitingIbanPayment(remote.data ?? local?.order)) {
+  } else if (customer && awaitingIbanPayment(tracked ?? local?.order)) {
     // IBAN: mesmo sem o seguimento da API (cópia local), o cliente tem de poder enviar o comprovativo.
     // Depois do envio, a cópia local passa a ter o comprovativo (sem o seguimento da API, é a única fonte).
     const onUploaded = (payment: OrderPayment) => {
@@ -1065,15 +1103,15 @@ function OrderLoader({ id }: { id: string }) {
       <IbanPaymentWait
         view={view}
         onUploaded={onUploaded}
-        onRetried={remote.data && withinHold(remote.data, now) ? onRetried : undefined}
+        onRetried={tracked && withinHold(tracked, now) ? onRetried : undefined}
       />
     );
   } else {
     screen = (
       <OrderDetails
         view={view}
-        fromDevice={!remote.data}
-        onConfirmReceived={customer && receiptConfirmation && readyToConfirm(remote.data) ? onReceived : undefined}
+        fromDevice={!tracked}
+        onConfirmReceived={customer && receiptConfirmation && readyToConfirm(tracked) ? onReceived : undefined}
       />
     );
   }

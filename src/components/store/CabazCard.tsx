@@ -35,7 +35,6 @@ export function CabazCard({ product }: { product: Product }) {
             <span className="s7-etiqueta s7-etiqueta--esgotado">Esgotado</span>
           ) : (
             <>
-              {product.badge && <span className="s7-etiqueta s7-etiqueta--natal">{product.badge}</span>}
               {product.limitedStock && <LimitedStockBadge />}
             </>
           )}

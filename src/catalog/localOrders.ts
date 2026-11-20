@@ -19,6 +19,7 @@ export interface LocalOrderExtras {
   paymentMethod?: PaymentMethod;
   paymentPhone?: string;
   nif?: string;
+  via?: string;
   gift?: OrderGift;
 }
 

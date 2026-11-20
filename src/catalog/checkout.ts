@@ -4,8 +4,9 @@ import { NBSP, formatDate, formatKz, formatPhone, toLocalIsoDate } from '../util
 
 /**
  * Cópia de segurança nas observações (`notes`, até 500 caracteres) dos dados que a API
- * ainda não guarda: entrega, pagamento, NIF e oferta. Os mesmos dados também seguem nos
- * campos próprios do pedido; com `api_features=order-fields` as notas levam só as observações.
+ * ainda não guarda: entrega, pagamento, NIF, número Via e oferta. Os mesmos dados também seguem nos
+ * campos próprios do pedido; com `api_features=order-fields` as notas levam só as observações (e o
+ * número Via, enquanto a API não o guardar).
  */
 export interface OrderNoteParts {
   deliveryType: DeliveryType;
@@ -15,6 +16,10 @@ export interface OrderNoteParts {
   paymentMethod: PaymentMethod;
   paymentPhone: string;
   nif: string;
+  /** Número associado ao Via ou do cartão Via. */
+  via: string;
+  /** A API ainda não guarda o número Via (`viaCardNumber` em GET /checkout/options): segue nas observações. */
+  viaInNotes: boolean;
   gift: OrderGift | null;
   observations: string;
   onlyObservations: boolean;
@@ -27,7 +32,12 @@ interface FreeText {
 }
 
 function composeNotes(parts: OrderNoteParts, text: FreeText): string {
-  if (parts.onlyObservations) return text.observations.trim();
+  const via = parts.via.trim();
+  if (parts.onlyObservations) {
+    if (!parts.viaInNotes || !via) return text.observations.trim();
+    const observations = text.observations.trim();
+    return [`N.º Via: ${via}`, observations && `Observações: ${observations}`].filter(Boolean).join('\n');
+  }
 
   const lines: string[] = [];
   if (parts.deliveryType === 'HOME_DELIVERY' && parts.deliveryAddress) {
@@ -47,6 +57,7 @@ function composeNotes(parts: OrderNoteParts, text: FreeText): string {
       : `Pagamento: ${payment}`,
   );
   if (parts.nif.trim()) lines.push(`NIF: ${parts.nif.trim()}`);
+  if (via) lines.push(`N.º Via: ${via}`);
   if (parts.gift) {
     lines.push(`Oferta para: ${parts.gift.recipient.trim()}`);
     if (text.message.trim()) lines.push(`Mensagem do cartão: "${text.message.trim()}"`);
@@ -85,6 +96,11 @@ export function normalisePhone(value: string): string {
 
 export function isValidMobile(value: string): boolean {
   return /^9\d{8}$/.test(normalisePhone(value));
+}
+
+/** Número Via: letras, algarismos, espaços, "+" e "-" (como valida a API). Vazio é válido: o campo é opcional. */
+export function isValidViaNumber(value: string): boolean {
+  return /^[\p{L}\p{N} +-]*$/u.test(value.trim());
 }
 
 export function isValidEmail(value: string): boolean {

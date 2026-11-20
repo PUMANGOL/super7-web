@@ -209,6 +209,8 @@ export interface CheckoutOptions {
   expressValidityMinutes: number;
   /** O cliente confirma o levantamento na página da encomenda ("Levantei!"); só com a API que o suporta. */
   receiptConfirmation: boolean;
+  /** A API guarda o número Via na encomenda; sem isso, o número segue nas observações. */
+  viaCardStored: boolean;
 }
 
 /**
@@ -226,6 +228,7 @@ export const DEFAULT_CHECKOUT_OPTIONS: CheckoutOptions = {
   christmasTheme: null,
   expressValidityMinutes: EXPRESS_VALIDITY_MINUTES,
   receiptConfirmation: false,
+  viaCardStored: false,
 };
 
 /**
@@ -238,6 +241,7 @@ export const CHRISTMAS_THEME_DEFAULT = true;
 export const CHECKOUT_LIMITS = {
   notes: 500,
   nif: 20,
+  via: 30,
   recipient: 60,
   observations: 160,
   address: 160,
