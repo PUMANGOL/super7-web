@@ -35,6 +35,7 @@ interface FormState {
   iban: string;
   ibanHolder: string;
   ibanBank: string;
+  expressPosId: string;
   christmasTheme: boolean;
 }
 
@@ -48,13 +49,19 @@ function toForm(settings: StoreSettings): FormState {
     iban: settings.iban ?? '',
     ibanHolder: settings.ibanHolder ?? '',
     ibanBank: settings.ibanBank ?? '',
+    expressPosId: settings.expressPosId ?? '',
     christmasTheme: settings.christmasTheme ?? CHRISTMAS_THEME_DEFAULT,
   };
 }
 
-function validate(form: FormState): string[] {
+function validate(form: FormState, posIdSupported: boolean): string[] {
   const errors: string[] = [];
   if (form.paymentMethods.length === 0) errors.push('Escolha pelo menos uma forma de pagamento.');
+  if (posIdSupported && form.paymentMethods.includes('MULTICAIXA_EXPRESS')) {
+    const posId = form.expressPosId.trim();
+    if (!posId) errors.push('Indique o posId do posto que recebe os pagamentos Multicaixa Express.');
+    else if (!/^\d{1,20}$/.test(posId)) errors.push('O posId do Multicaixa Express só pode ter algarismos (ex.: 421056).');
+  }
   if (form.paymentMethods.includes('IBAN')) {
     if (!form.iban.trim()) errors.push('Indique o IBAN para o pagamento por transferência.');
     if (!form.ibanHolder.trim()) errors.push('Indique o titular da conta.');
@@ -132,6 +139,8 @@ function SettingsForm({
   });
 
   const themeSupported = typeof initial.christmasTheme === 'boolean';
+  // A API anterior não devolve o posId: o campo só aparece depois de publicar a API nova.
+  const posIdSupported = typeof initial.expressPosId === 'string';
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
   const toggleMethod = (method: PaymentMethod, checked: boolean) =>
     set(
@@ -141,7 +150,7 @@ function SettingsForm({
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const found = validate(form);
+    const found = validate(form, posIdSupported);
     setErrors(found);
     if (found.length > 0) return;
     save.mutate({
@@ -153,11 +162,13 @@ function SettingsForm({
       iban: form.iban.trim() || null,
       ibanHolder: form.ibanHolder.trim() || null,
       ibanBank: form.ibanBank.trim() || null,
+      ...(posIdSupported ? { expressPosId: form.expressPosId.trim() } : {}),
       ...(themeSupported ? { christmasTheme: form.christmasTheme } : {}),
     });
   };
 
   const ibanOn = form.paymentMethods.includes('IBAN');
+  const expressOn = form.paymentMethods.includes('MULTICAIXA_EXPRESS');
   const disabled = !canEdit || save.isPending;
 
   return (
@@ -200,6 +211,31 @@ function SettingsForm({
                 </span>
               </label>
             ))}
+
+            {expressOn && posIdSupported && (
+              <div className="settings-grid">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="settings-posid">
+                    posId do Multicaixa Express
+                  </label>
+                  <input
+                    id="settings-posid"
+                    className="form-input"
+                    value={form.expressPosId}
+                    onChange={(event) => set('expressPosId', event.target.value)}
+                    placeholder="421056"
+                    inputMode="numeric"
+                    maxLength={20}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <span className="settings-help">
+                    Código do posto que recebe os pagamentos Multicaixa Express (421056 = PA Zanca). Os pagamentos já
+                    pedidos continuam com o posId com que saíram.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {ibanOn && (
               <div className="settings-grid">

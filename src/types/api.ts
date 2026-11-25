@@ -157,6 +157,11 @@ export interface StoreSettings {
   iban: string | null;
   ibanHolder: string | null;
   ibanBank: string | null;
+  /**
+   * posId enviado em cada pedido Multicaixa Express: o posto que recebe o pagamento (421056 = PA Zanca). Só algarismos;
+   * vazio no PUT volta ao do servidor. Ausente na resposta = a API ainda não guarda esta opção.
+   */
+  expressPosId?: string | null;
   /** Tema de Natal na loja. Ausente na resposta = a API ainda não guarda esta opção. */
   christmasTheme?: boolean;
   /** Livros na loja, todos de uma vez. Ausente na resposta = a API ainda não guarda esta opção. */
