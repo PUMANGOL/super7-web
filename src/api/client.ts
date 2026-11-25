@@ -81,6 +81,29 @@ export function unwrap<T>(body: ApiResponse<T>): T {
   return body.data;
 }
 
+/**
+ * Erro que chegou com HTTP 200: alguns endpoints (ex.: POST /user com um e-mail repetido) respondem sempre 200 e
+ * põem o erro em `status` e `errors` do envelope.
+ */
+export class ApiEnvelopeError extends Error {
+  readonly messages: string[];
+
+  constructor(messages: string[]) {
+    super(messages[0]);
+    this.name = 'ApiEnvelopeError';
+    this.messages = messages;
+  }
+}
+
+/** Como `unwrap`, mas falha quando o envelope traz um `status` de erro. */
+export function unwrapOk<T>(body: ApiResponse<T>, fallback: string): T {
+  if (body.status && body.status !== 'OK') {
+    const messages = (body.errors ?? []).filter((message) => typeof message === 'string' && message.trim() !== '');
+    throw new ApiEnvelopeError(messages.length > 0 ? messages : [fallback]);
+  }
+  return body.data;
+}
+
 const MESSAGES_BY_STATUS: Record<number, string> = {
   400: 'Verifique os dados e tente novamente.',
   401: 'A sua sessão terminou. Inicie sessão novamente.',
@@ -94,6 +117,8 @@ const MESSAGES_BY_STATUS: Record<number, string> = {
  * primeiro as de `errors` no envelope, depois uma mensagem pelo código HTTP.
  */
 export function getApiErrorMessages(error: unknown, fallback = 'Ocorreu um erro. Tente novamente.'): string[] {
+  if (error instanceof ApiEnvelopeError) return error.messages;
+
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as Partial<ApiResponse<unknown>> | undefined;
     const errors = Array.isArray(body?.errors)

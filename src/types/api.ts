@@ -410,6 +410,13 @@ export interface ApiOrder {
 export interface AuthRole {
   id: UUID;
   name: string;
+  /**
+   * Proposto (`role-permissions`): códigos das permissões do perfil (`VIEW_ORDERS`, `MANAGE_USERS`…, ver
+   * PERMISSION_INFO em src/utils/auth.ts). Ausente = a API usa as regras fixas de cada perfil.
+   */
+  permissions?: string[] | null;
+  /** Proposto: descrição curta do perfil, para os perfis criados no back-office. */
+  description?: string | null;
 }
 
 export interface AuthUser {
@@ -424,6 +431,32 @@ export interface AuthUser {
   typeUser: number;
   perfil: string;
   active: boolean;
+}
+
+/* ---------- Utilizadores e perfis (só ADMIN) ---------- */
+
+/** POST /user e PUT /user/{id}. */
+export interface UserRequest {
+  name: string;
+  email: string;
+  /** Telefone, só algarismos (ex.: 244923000000). */
+  msisdn: string;
+  /**
+   * Obrigatória ao criar. Ao editar, vazia mantém a actual; a API actual ainda a exige também ao editar (400) e a
+   * enviada passa a ser a nova.
+   */
+  password?: string;
+  /** IDs dos perfis (GET /role/findList). Substituem os que a pessoa tinha. */
+  roles: UUID[];
+}
+
+/** POST /role e, proposto, PUT /role/{id} com as permissões. */
+export interface RoleRequest {
+  name: string;
+  /** Proposto. */
+  description?: string | null;
+  /** Proposto (`role-permissions`): códigos das permissões. */
+  permissions?: string[];
 }
 
 export interface SignInPayload {

@@ -266,6 +266,31 @@
   background: var(--bo-menu-line);
 }
 
+/* Menu lateral (por omissão): o menu em coluna à esquerda do conteúdo. */
+.aparencia-mini--lateral .aparencia-mini__corpo {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+}
+
+.aparencia-mini--lateral .aparencia-mini__menu {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  height: auto;
+  padding: 10px 6px;
+}
+
+.aparencia-mini--lateral .aparencia-mini__item {
+  width: auto;
+  background-position: 30% 50%;
+}
+
+.aparencia-mini--lateral .aparencia-mini__divisor {
+  width: auto;
+  height: 1px;
+  margin: 2px 0;
+}
+
 .aparencia-mini__conteudo {
   display: grid;
   gap: 8px;

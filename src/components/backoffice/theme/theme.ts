@@ -48,7 +48,7 @@ export const THEME_GROUPS: { id: string; label: string; help: string; keys: Them
 export const THEME_FIELDS: Record<ThemeKey, { label: string; help: string }> = {
   primary: { label: 'Cor principal', help: 'Barra do topo, opção activa do menu, botões e ligações.' },
   accent: { label: 'Cor de destaque', help: 'Linha por baixo da barra do topo e pequenos destaques.' },
-  menu: { label: 'Barra do menu', help: 'Fundo da barra com as páginas. O texto passa a claro ou escuro conforme a cor.' },
+  menu: { label: 'Menu', help: 'Fundo do menu com as páginas (lateral ou horizontal). O texto passa a claro ou escuro conforme a cor.' },
   background: { label: 'Fundo das páginas', help: 'Tem de ser claro: o texto das páginas é escuro.' },
   chart1: { label: 'Série principal', help: 'Receita, rankings e o funil (em tons mais claros e mais escuros).' },
   chart2: { label: 'Segunda série', help: 'A outra parte das repartições, como a transferência bancária.' },

@@ -2,6 +2,7 @@ import { Fragment, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
+  ChevronDown,
   FolderOpen,
   LayoutDashboard,
   LogOut,
@@ -9,10 +10,14 @@ import {
   Menu,
   Package,
   Palette,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Store,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,6 +26,7 @@ import { useAuth } from '../../context/auth';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { Permission } from '../../utils/auth';
 import { BackofficeUserMenu } from './BackofficeUserMenu';
+import { setMenuGroupOpen, updateMenuPreferences, useMenuPreferences } from './menuPreferences';
 import { BackofficeThemeProvider } from './theme/BackofficeThemeProvider';
 import { useBackofficeLogout } from './useBackofficeLogout';
 import './BackofficeLayout.css';
@@ -66,12 +72,24 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/backoffice/aparencia', label: 'Aparência', icon: Palette, permission: 'manageSettings' },
     ],
   },
+  {
+    id: 'administracao',
+    label: 'Administração',
+    items: [
+      { to: '/backoffice/utilizadores', label: 'Utilizadores', icon: Users, permission: 'manageUsers' },
+      { to: '/backoffice/permissoes', label: 'Perfis e permissões', icon: ShieldCheck, permission: 'manageUsers' },
+    ],
+  },
 ];
 
-/** Abaixo desta largura o menu sai de lado (por cima do conteúdo) em vez de ficar na barra horizontal. */
+/** Abaixo desta largura o menu sai de lado (por cima do conteúdo), seja qual for a disposição escolhida. */
 const NARROW_SCREEN = '(max-width: 1024px)';
 
-/** Base do People Connect: barra verde no topo, barra do menu por baixo e o conteúdo em fundo claro. */
+/**
+ * Base do People Connect: barra verde no topo e o conteúdo em fundo claro. O menu fica à esquerda (por omissão),
+ * com os grupos recolhíveis e a opção de mostrar só os ícones, ou numa barra horizontal por baixo do topo; cada
+ * pessoa escolhe no menu da conta.
+ */
 export function BackofficeLayout() {
   return (
     <BackofficeThemeProvider>
@@ -86,9 +104,16 @@ function BackofficeShell() {
   const navigate = useNavigate();
   const logout = useBackofficeLogout();
   const narrow = useMediaQuery(NARROW_SCREEN);
+  const preferences = useMenuPreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
   const menuOpen = narrow && drawerOpen;
+  const lateral = preferences.layout === 'lateral';
+  /** Grupos em coluna, com o título que os abre e fecha: menu lateral e menu do telemóvel. */
+  const vertical = lateral || narrow;
+  /** Menu lateral só com os ícones. */
+  const compact = lateral && preferences.compact && !narrow;
 
   // Menu aberto no telemóvel: Esc fecha-o e a página por baixo não desliza.
   useEffect(() => {
@@ -111,6 +136,28 @@ function BackofficeShell() {
   const current = groups
     .flatMap((group) => group.items)
     .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
+  const currentGroupId = groups.find((group) => current && group.items.includes(current))?.id;
+
+  // No ecrã largo, o botão do topo recolhe o menu lateral aos ícones; no estreito, abre e fecha o menu.
+  const toggleMenu = () => {
+    if (narrow) setDrawerOpen((open) => !open);
+    else updateMenuPreferences({ compact: !preferences.compact });
+  };
+  const menuButtonLabel = narrow
+    ? menuOpen
+      ? 'Fechar o menu'
+      : 'Abrir o menu'
+    : compact
+      ? 'Mostrar os nomes do menu'
+      : 'Recolher o menu aos ícones';
+
+  // Menu só com ícones: o nome da página aparece ao lado, ao passar o rato ou com o teclado.
+  const showTip = (label: string) => (event: { currentTarget: HTMLElement }) => {
+    if (!compact) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    setTip({ label, top: box.top + box.height / 2, left: box.right + 10 });
+  };
+  const hideTip = () => setTip(null);
 
   const searchOrders = (event: FormEvent) => {
     event.preventDefault();
@@ -123,8 +170,17 @@ function BackofficeShell() {
   const canSearch = can('viewOrders');
   const subPage = current && location.pathname !== current.to;
 
+  const shellClass = [
+    'bo',
+    lateral ? 'bo--lateral' : 'bo--horizontal',
+    compact && 'bo--compacto',
+    menuOpen && 'bo--menu-aberto',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={`bo${menuOpen ? ' bo--menu-aberto' : ''}`}>
+    <div className={shellClass}>
       <a className="bo-saltar" href="#bo-conteudo">
         Saltar para o conteúdo
       </a>
@@ -134,12 +190,23 @@ function BackofficeShell() {
           <button
             type="button"
             className="bo-topo__menu"
-            onClick={() => setDrawerOpen((open) => !open)}
+            onClick={toggleMenu}
             aria-controls="bo-menu"
-            aria-expanded={menuOpen}
-            aria-label={menuOpen ? 'Fechar o menu' : 'Abrir o menu'}
+            aria-expanded={narrow ? menuOpen : !compact}
+            aria-label={menuButtonLabel}
+            title={narrow ? undefined : menuButtonLabel}
           >
-            {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+            {narrow ? (
+              menuOpen ? (
+                <X size={20} aria-hidden="true" />
+              ) : (
+                <Menu size={20} aria-hidden="true" />
+              )
+            ) : compact ? (
+              <PanelLeftOpen size={19} aria-hidden="true" />
+            ) : (
+              <PanelLeftClose size={19} aria-hidden="true" />
+            )}
           </button>
 
           <Link to="/" className="bo-topo__logo" title="Abrir a loja Super7 Digital">
@@ -198,26 +265,66 @@ function BackofficeShell() {
           </div>
         </div>
 
-        <nav id="bo-menu" className="bo-menu" aria-label="Menu do back-office">
+        <nav
+          id="bo-menu"
+          className={`bo-menu${vertical ? ' bo-menu--vertical' : ''}`}
+          aria-label="Menu do back-office"
+          onScroll={hideTip}
+        >
           <ul className="bo-menu__lista">
-            {groups.map((group, index) => (
-              <Fragment key={group.id}>
-                {index > 0 && <li className="bo-menu__divisor" aria-hidden="true" />}
-                <li className="bo-menu__grupo">
-                  <span className="bo-menu__titulo">{group.label}</span>
-                  <ul className="bo-menu__itens">
-                    {group.items.map(({ to, label, icon: Icon }) => (
-                      <li key={to}>
-                        <NavLink to={to} className="bo-item" onClick={() => setDrawerOpen(false)}>
-                          <Icon size={16} aria-hidden="true" />
-                          <span>{label}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              </Fragment>
-            ))}
+            {groups.map((group, index) => {
+              const hasCurrent = group.id === currentGroupId;
+              // Fechados por omissão, excepto o da página actual; a escolha de cada pessoa fica guardada.
+              const open = !vertical || compact || (preferences.groups[group.id] ?? hasCurrent);
+              const panelId = `bo-grupo-${group.id}`;
+              return (
+                <Fragment key={group.id}>
+                  {index > 0 && (!vertical || compact) && <li className="bo-menu__divisor" aria-hidden="true" />}
+                  <li className={`bo-menu__grupo${hasCurrent ? ' bo-menu__grupo--actual' : ''}`}>
+                    {vertical && !compact && (
+                      <button
+                        type="button"
+                        className="bo-menu__titulo"
+                        aria-expanded={open}
+                        aria-controls={panelId}
+                        onClick={() => setMenuGroupOpen(group.id, !open)}
+                      >
+                        <span className="bo-menu__titulo-texto">{group.label}</span>
+                        {hasCurrent && !open && (
+                          <span className="bo-menu__marca">
+                            <span className="sr-only">(tem a página aberta)</span>
+                          </span>
+                        )}
+                        <ChevronDown size={15} className="bo-menu__seta" aria-hidden="true" />
+                      </button>
+                    )}
+                    <div id={panelId} className="bo-menu__painel" data-aberto={open} inert={!open}>
+                      <ul className="bo-menu__itens" aria-label={compact ? group.label : undefined}>
+                        {group.items.map(({ to, label, icon: Icon }) => (
+                          <li key={to}>
+                            <NavLink
+                              to={to}
+                              className="bo-item"
+                              onClick={() => {
+                                setDrawerOpen(false);
+                                hideTip();
+                              }}
+                              onMouseEnter={showTip(label)}
+                              onMouseLeave={hideTip}
+                              onFocus={showTip(label)}
+                              onBlur={hideTip}
+                            >
+                              <Icon size={compact ? 18 : 16} aria-hidden="true" />
+                              <span className="bo-item__texto">{label}</span>
+                            </NavLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </li>
+                </Fragment>
+              );
+            })}
           </ul>
           <button type="button" className="bo-item bo-menu__sair" onClick={logout}>
             <LogOut size={16} aria-hidden="true" />
@@ -227,6 +334,12 @@ function BackofficeShell() {
       </header>
 
       {menuOpen && <div className="bo-veu" aria-hidden="true" onClick={() => setDrawerOpen(false)} />}
+
+      {compact && tip && (
+        <span className="bo-dica" style={{ top: tip.top, left: tip.left }} aria-hidden="true">
+          {tip.label}
+        </span>
+      )}
 
       <main id="bo-conteudo" className="bo-conteudo" tabIndex={-1}>
         {subPage && (

@@ -131,8 +131,16 @@ export const STORE = {
                         entrega, pagamento, NIF e oferta para as observações (`notes`)
      backoffice-theme   GET/PUT /settings/theme      cores do back-office para toda a equipa; sem
                         ela, as cores que o ADMIN escolhe ficam só no browser dele
+     role-permissions   `permissions` em /role       permissões de cada perfil editáveis em "Perfis e
+                        permissões" e perfis novos; sem ela, a tabela mostra as regras fixas da API
 */
-export type ApiFeature = 'campaigns' | 'checkout-options' | 'order-tracking' | 'order-fields' | 'backoffice-theme';
+export type ApiFeature =
+  | 'campaigns'
+  | 'checkout-options'
+  | 'order-tracking'
+  | 'order-fields'
+  | 'backoffice-theme'
+  | 'role-permissions';
 
 const ENABLED_FEATURES = new Set(
   String(import.meta.env.api_features ?? '')

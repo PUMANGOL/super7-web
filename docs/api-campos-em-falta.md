@@ -19,6 +19,7 @@ Tudo o que se pede é **opcional e compatível com a versão actual**: nenhum ca
 | `checkout-options` | `GET /checkout/options` |
 | `order-tracking` | `GET /order/{id}/tracking` |
 | `order-fields` | Os campos novos de `POST /order` gravados. As observações deixam de levar a cópia de segurança. |
+| `role-permissions` | `permissions` e `description` em `/role` (secção 9.2). A tabela de permissões passa a ser editável. |
 
 Exemplo: `api_features=campaigns,checkout-options,order-tracking,order-fields`
 
@@ -34,6 +35,7 @@ Exemplo: `api_features=campaigns,checkout-options,order-tracking,order-fields`
 | 6 | Produtos | Campos próprios para campanha, preço anterior e cabazes (hoje em `attributes`) | Média |
 | 7 | Lojas | Zona, morada, horário e telefone do posto de recolha | Média |
 | 8 | Outros | E-mail opcional com SMS, localização opcional no levantamento, produtos indisponíveis no back-office, URL de seguimento e CORS | Baixa |
+| 9 | Utilizadores | `PUT /user/{id}` sem password obrigatória e sem terminar a sessão; protecção do último ADMIN; permissões por perfil | Alta (9.1), média (9.2) |
 
 ## 1. Encomendas: `POST /order` e resposta
 
@@ -223,3 +225,45 @@ O back-office já tem estes campos no formulário das lojas. Hoje avisa que a AP
 - **Produtos indisponíveis no back-office**: `GET /product` e `GET /product/list` só devolvem produtos com `available=true`. Um produto marcado como indisponível desaparece também do back-office. Proposta: `GET /product?includeUnavailable=true` para ADMIN e MANAGER.
 - **URL de seguimento**: actualizar `app.order.tracking-url` para o domínio do Super7 Digital (o caminho `/encomenda/{id}` mantém-se).
 - **CORS**: restringir `APP_CORS_ALLOWED_ORIGINS` aos domínios da loja e do back-office.
+
+## 9. Utilizadores e permissões
+
+O back-office tem duas páginas novas, só para ADMIN: **Utilizadores** (`/backoffice/utilizadores`) e **Perfis e permissões** (`/backoffice/permissoes`). Com a API actual já funcionam a lista (`GET /user`), a criação com perfis (`POST /user`, perfis de `GET /role/findList`), a mudança de perfis e a eliminação. A tabela de permissões mostra as regras fixas de `SecurityExpressions`.
+
+### 9.1 Correcções em `/user` (prioridade alta)
+
+| O que acontece hoje | Efeito no back-office | Proposta |
+| --- | --- | --- |
+| `UserRequestDTO.password` tem `@NotBlank`, também no `PUT /user/{id}`. | Para mudar só o perfil de alguém, o ADMIN tem de lhe dar uma password nova (sem ela, a API responde 400 e o back-office pede uma). | Password opcional no PUT (DTO próprio ou grupo de validação). `UserServiceImpl.update` já mantém a password actual quando vem vazia. |
+| O `UserMapper` cria um `User` novo no PUT: `token`, `avatar` e `typeUser` perdem-se. | A pessoa editada perde a sessão, porque o `JwtAuthenticationTokenFilter` procura o token na base de dados. Se o ADMIN se editar a si próprio, é desligado. O back-office avisa antes de gravar. | Carregar o utilizador e mudar só `name`, `email`, `msisdn`, `roles` e, se vier, `password`. |
+| Nada impede tirar o perfil ADMIN ao último administrador, nem eliminá-lo. | O back-office já o impede, mas só no browser. | Responder 409 quando o pedido deixaria a loja sem nenhum ADMIN activo, ou quando um utilizador tenta eliminar a própria conta. |
+| `POST /user` responde sempre 200 e põe o erro em `status`/`errors` (ex.: e-mail repetido). | O back-office já trata (mostra "Já existe uma conta com este e-mail ou telefone"). | Opcional: 409 para e-mail ou telefone repetido. |
+| `PUT /user/{id}` grava sempre `status = ACTIVATED`; não há forma de suspender uma conta sem a eliminar. | Para tirar o acesso a alguém, só a eliminação (que pode falhar se a conta tiver registos). | Opcional: `PUT /user/{id}/status` com `ACTIVATED` ou `DESACTIVATED`, e `GET /user?status=`. |
+
+### 9.2 Permissões por perfil (`role-permissions`, prioridade média)
+
+Hoje as permissões estão fixas no código: cada `@PreAuthorize` lista os nomes dos perfis. Para o ADMIN as poder mudar no back-office e criar perfis novos (ex.: "Armazém"):
+
+- `RoleRequestDTO` e `RoleResponseDTO` ganham `permissions` (`List<String>`, códigos da tabela abaixo) e `description` (`String`, até 160, opcional).
+- `GET /role/findList`, `POST /role` e `PUT /role/{id}` gravam e devolvem os dois campos. Os perfis dentro de `user.roles`, em `/auth/sign-in` e `/auth/validate-token`, também levam `permissions`: o back-office usa-as para mostrar o menu e as acções.
+- As authorities de cada pedido passam a incluir as permissões dos perfis da pessoa, e cada `@PreAuthorize` verifica a permissão (ex.: `hasAuthority('CONFIRM_PAYMENTS')`) em vez da lista de perfis.
+- O perfil `ADMIN` tem sempre todas as permissões, mesmo que a lista venha incompleta.
+- O filtro HTTP do back-office (`BACKOFFICE_AUTHORITIES`) passa a aceitar qualquer pessoa com pelo menos uma permissão, para os perfis novos entrarem.
+- `DELETE /role/{id}` recusa os perfis do sistema (`ADMIN`, `USER`, `MANAGER`, `SUPPORT`, `FINANCE`, `AUDITOR`).
+- Migração: os valores iniciais são as regras de hoje, na última coluna da tabela.
+
+| Código | No back-office | Endpoints | Perfis com a permissão hoje |
+| --- | --- | --- | --- |
+| `VIEW_DASHBOARD` | Painel | `GET /order` (números do painel) | Todos os de equipa |
+| `VIEW_ORDERS` | Encomendas e detalhe | `GET /order`, `GET /order/{id}`, `GET /order/{id}/payment-proof` | Todos os de equipa |
+| `CHANGE_ORDER_STATUS` | Mudar o estado | `PUT /order/{id}/status` | ADMIN, MANAGER, SUPPORT |
+| `CONFIRM_PAYMENTS` | Confirmar ou recusar pagamentos | `PUT /order/{id}/payment-status` | ADMIN, MANAGER, FINANCE |
+| `MANAGE_CATALOG` | Produtos, livros, categorias e lojas | Escrita em `/product`, `/book`, `/category`, `/pickup-post` e `POST /images` | ADMIN, MANAGER |
+| `VIEW_SETTINGS` | Ver as definições | `GET /settings` | ADMIN, MANAGER |
+| `MANAGE_SETTINGS` | Alterar definições e aparência | `PUT /settings`, `PUT /settings/theme` | ADMIN |
+| `MANAGE_USERS` | Utilizadores e perfis | `/user`, `/role` | ADMIN |
+
+`CHANGE_ORDER_STATUS` e `CONFIRM_PAYMENTS` pressupõem `VIEW_ORDERS`, e `MANAGE_SETTINGS` pressupõe `VIEW_SETTINGS`. O back-office marca e desmarca a permissão pressuposta automaticamente. A API pode aplicar a mesma regra ao gravar.
+
+Depois de publicar, juntar `role-permissions` a `api_features`: a tabela de Perfis e permissões passa a ter caixas para marcar e o botão "Novo perfil". Sem a variável, o back-office não chama nada de novo. Se a variável estiver activa e a API ainda não devolver `permissions`, o back-office avisa ao gravar que as permissões não ficaram guardadas.
+

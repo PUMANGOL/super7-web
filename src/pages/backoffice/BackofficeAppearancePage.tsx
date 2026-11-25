@@ -13,6 +13,7 @@ import {
   type BackofficeTheme,
   type ThemeKey,
 } from '../../components/backoffice/theme/theme';
+import { useMenuPreferences } from '../../components/backoffice/menuPreferences';
 import { useBackofficeTheme } from '../../components/backoffice/theme/themeContext';
 import { useToast } from '../../context/toast';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -39,6 +40,8 @@ export function BackofficeAppearancePage() {
 
 function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
   const { shared, updatedAt, updatedBy, setPreview, saveTheme, saving } = useBackofficeTheme();
+  // A miniatura segue a disposição do menu escolhida por quem está a ver.
+  const { layout } = useMenuPreferences();
   const { showToast } = useToast();
   const [draft, setDraft] = useState(initial);
   const [texts, setTexts] = useState<BackofficeTheme>(initial);
@@ -216,35 +219,37 @@ function AppearanceForm({ initial }: { initial: BackofficeTheme }) {
 
           <aside className="aparencia__antevisao" aria-label="Pré-visualização">
             <p className="aparencia__antevisao-titulo">Pré-visualização</p>
-            <div className="aparencia-mini" aria-hidden="true">
+            <div className={`aparencia-mini aparencia-mini--${layout}`} aria-hidden="true">
               <div className="aparencia-mini__topo">
                 <span className="aparencia-mini__logo" />
                 <span className="aparencia-mini__app" />
                 <span className="aparencia-mini__procura" />
                 <span className="aparencia-mini__avatar" />
               </div>
-              <div className="aparencia-mini__menu">
-                <span className="aparencia-mini__item aparencia-mini__item--activo" />
-                <span className="aparencia-mini__item" />
-                <span className="aparencia-mini__divisor" />
-                <span className="aparencia-mini__item" />
-                <span className="aparencia-mini__item" />
-                <span className="aparencia-mini__item" />
-              </div>
-              <div className="aparencia-mini__conteudo">
-                <div className="aparencia-mini__cartoes">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
+              <div className="aparencia-mini__corpo">
+                <div className="aparencia-mini__menu">
+                  <span className="aparencia-mini__item aparencia-mini__item--activo" />
+                  <span className="aparencia-mini__item" />
+                  <span className="aparencia-mini__divisor" />
+                  <span className="aparencia-mini__item" />
+                  <span className="aparencia-mini__item" />
+                  <span className="aparencia-mini__item" />
                 </div>
-                <div className="aparencia-mini__grafico">
-                  {PREVIEW_BARS.map(([first, second], index) => (
-                    <span key={index} className="aparencia-mini__par">
-                      <i style={{ height: `${first}%` }} />
-                      <i style={{ height: `${second}%` }} />
-                    </span>
-                  ))}
+                <div className="aparencia-mini__conteudo">
+                  <div className="aparencia-mini__cartoes">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <div className="aparencia-mini__grafico">
+                    {PREVIEW_BARS.map(([first, second], index) => (
+                      <span key={index} className="aparencia-mini__par">
+                        <i style={{ height: `${first}%` }} />
+                        <i style={{ height: `${second}%` }} />
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

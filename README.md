@@ -97,7 +97,8 @@ endpoints em falta estão descritos para o backend em **[docs/api-campos-em-falt
 
 - Os campos novos já seguem nos pedidos (a API actual ignora-os) e são lidos das respostas assim que existirem.
 - Os endpoints novos activam-se na variável de ambiente `api_features`, à medida que o backend os publicar:
-  `campaigns`, `checkout-options`, `order-tracking`, `order-fields`, `backoffice-theme` (ver `src/config/store.ts`).
+  `campaigns`, `checkout-options`, `order-tracking`, `order-fields`, `backoffice-theme`, `role-permissions` (ver
+  `src/config/store.ts`).
 - Até lá, as campanhas vêm de `CAMPAIGNS` e as opções do checkout (taxa e zonas de entrega, métodos de
   pagamento) de `DEFAULT_CHECKOUT_OPTIONS`, ambos em `src/config/store.ts`.
 
@@ -174,10 +175,23 @@ mostra o estado actual da API.
 | Produtos, livros, categorias, lojas de levantamento | ADMIN, MANAGER |
 | Definições da loja (ver) | ADMIN, MANAGER |
 | Definições da loja (alterar), Aparência | ADMIN |
+| Utilizadores, Perfis e permissões | ADMIN |
+
+A tabela é a das regras fixas da API (`PERMISSIONS` em `src/utils/auth.ts`). Com `role-permissions` em
+`api_features`, as permissões de cada perfil vêm da API e o ADMIN muda-as no back-office.
 
 O layout segue a base do People Connect, em tamanho compacto (`src/components/backoffice/BackofficeLayout.*`):
-fonte Outfit, barra verde no topo com a pesquisa de encomendas (abre `/backoffice/encomendas?q=`) e, por baixo, a
-barra do menu horizontal com as páginas agrupadas (Geral, Catálogo, Loja). Até 1024 px o menu sai de lado.
+fonte Outfit, barra verde no topo com a pesquisa de encomendas (abre `/backoffice/encomendas?q=`) e o menu com as
+páginas agrupadas (Geral, Catálogo, Loja, Administração). Por omissão o menu fica à esquerda: os grupos abrem e
+fecham (só o da página actual vem aberto) e o botão do topo recolhe-o aos ícones, com o nome ao lado ao passar o
+rato. No menu da conta, cada pessoa pode trocar para a barra horizontal por baixo do topo. A escolha fica no
+browser (`menuPreferences.ts`). Até 1024 px o menu sai de lado, seja qual for a escolha.
+
+**Utilizadores** (`/backoffice/utilizadores`, só ADMIN): contas da equipa e clientes registados, com pesquisa e filtro
+por perfil. Cria contas (com password gerada), muda os perfis e elimina. Ninguém pode tirar o perfil de
+administrador a si próprio nem ao único administrador. **Perfis e permissões** (`/backoffice/permissoes`) mostra o que
+cada perfil pode fazer. Com `role-permissions`, a tabela passa a ser editável e permite criar perfis novos. O que
+falta na API está na secção 9 de `docs/api-campos-em-falta.md`.
 
 **Encomendas** (`/backoffice/encomendas`): separadores por estado com contagens, pesquisa, filtros (loja, pagamento,
 entrega), ordem e páginas de 25, tudo no endereço (ao voltar do detalhe a lista está como estava). Cada linha mostra a

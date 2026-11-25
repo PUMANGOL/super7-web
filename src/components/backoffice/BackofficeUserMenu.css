@@ -149,6 +149,29 @@
   color: inherit;
 }
 
+.bo-utilizador__seccao {
+  margin: 0;
+  padding: 4px 10px 2px;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bo-utilizador__opcao[aria-checked='true'] {
+  color: var(--bo-primary);
+  font-weight: 600;
+}
+
+.bo-utilizador__opcao[aria-checked='true'] svg {
+  color: inherit;
+}
+
+.bo-utilizador__escolhido {
+  margin-left: auto;
+}
+
 .bo-utilizador__divisor {
   height: 1px;
   margin: 6px 4px;

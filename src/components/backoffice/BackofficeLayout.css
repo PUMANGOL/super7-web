@@ -1,6 +1,6 @@
 /* Back-office com a base do People Connect, em tamanho compacto: fonte Outfit, barra verde de 56 px com linha de
-   destaque, barra do menu horizontal de 44 px e o conteúdo em fundo claro. As cores vêm de variáveis --bo-*
-   (theme/theme.ts), que o ADMIN pode mudar em Aparência. */
+   destaque, o menu à esquerda (248 px, ou 68 px só com os ícones) ou numa barra horizontal de 44 px, e o conteúdo
+   em fundo claro. As cores vêm de variáveis --bo-* (theme/theme.ts), que o ADMIN pode mudar em Aparência. */
 
 @font-face {
   font-family: 'Outfit';
@@ -270,10 +270,6 @@
   align-items: center;
 }
 
-.bo-menu__titulo {
-  display: none;
-}
-
 .bo-menu__divisor {
   flex-shrink: 0;
   width: 1px;
@@ -327,6 +323,151 @@
 
 .bo-menu__sair {
   flex-shrink: 0;
+}
+
+/* ---------- Menu em coluna (menu lateral e menu do telemóvel): grupos que abrem e fecham ---------- */
+.bo-menu--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.bo-menu--vertical .bo-menu__lista {
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  overflow: visible;
+}
+
+.bo-menu--vertical .bo-menu__grupo,
+.bo-menu--vertical .bo-menu__itens {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.bo-menu--vertical .bo-menu__itens {
+  gap: 2px;
+}
+
+.bo-menu--vertical .bo-menu__divisor {
+  width: auto;
+  height: 1px;
+  margin: 8px 6px;
+}
+
+.bo-menu__titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border-radius: 7px;
+  color: var(--bo-menu-label);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-align: left;
+  text-transform: uppercase;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.bo-menu__titulo:hover {
+  background: var(--bo-menu-hover);
+  color: var(--bo-menu-strong);
+}
+
+.bo-menu__titulo:focus-visible {
+  outline: 2px solid var(--bo-accent);
+  outline-offset: -2px;
+}
+
+.bo-menu__grupo--actual > .bo-menu__titulo {
+  color: var(--bo-menu-strong);
+}
+
+.bo-menu__titulo-texto {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Grupo fechado com a página aberta lá dentro. */
+.bo-menu__marca {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bo-accent);
+}
+
+.bo-menu__seta {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.bo-menu__titulo[aria-expanded='false'] .bo-menu__seta {
+  transform: rotate(-90deg);
+}
+
+.bo-menu--vertical .bo-menu__painel {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.2s ease, visibility 0s;
+}
+
+.bo-menu--vertical .bo-menu__painel[data-aberto='false'] {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.2s ease, visibility 0s linear 0.2s;
+}
+
+.bo-menu--vertical .bo-menu__painel > .bo-menu__itens {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bo-menu--vertical .bo-menu__painel[data-aberto='true'] > .bo-menu__itens {
+  padding-bottom: 8px;
+}
+
+.bo-menu--vertical .bo-item {
+  gap: 10px;
+  height: 38px;
+  padding: 0 12px;
+  overflow: hidden;
+}
+
+.bo-item__texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Nome da página ao lado do menu só com ícones. */
+.bo-dica {
+  position: fixed;
+  z-index: 60;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.5);
+  transform: translateY(-50%);
+  animation: bo-dica-entrar 0.12s ease-out;
+}
+
+@keyframes bo-dica-entrar {
+  from {
+    opacity: 0;
+    transform: translate(-4px, -50%);
+  }
 }
 
 /* ---------- Conteúdo ---------- */
@@ -591,13 +732,76 @@
   color: var(--bo-danger-ink);
 }
 
-/* ---------- Ecrãs mais estreitos ---------- */
+/* ---------- Ecrã largo: menu lateral ---------- */
 @media (min-width: 1025px) {
-  /* A barra do menu fica por baixo do topo; "Terminar sessão" está no menu da conta. */
+  /* "Terminar sessão" está no menu da conta. */
   .bo-menu__sair {
     display: none;
   }
+
+  .bo--lateral {
+    --bo-lateral-w: 248px;
+    --bo-cabecalho-h: calc(var(--bo-topo-h) + var(--bo-linha-h));
+  }
+
+  .bo--lateral.bo--compacto {
+    --bo-lateral-w: 68px;
+  }
+
+  /* O botão do topo recolhe o menu aos ícones e volta a mostrar os nomes. */
+  .bo--lateral .bo-topo {
+    padding-left: 15px;
+  }
+
+  .bo--lateral .bo-topo__menu {
+    display: inline-flex;
+  }
+
+  .bo--lateral .bo-menu {
+    position: fixed;
+    top: var(--bo-cabecalho-h);
+    bottom: 0;
+    left: 0;
+    width: var(--bo-lateral-w);
+    height: auto;
+    padding: 14px 10px 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--bo-menu-line) transparent;
+    scrollbar-width: thin;
+    box-shadow: 1px 0 0 rgba(15, 23, 42, 0.08);
+    transition: width 0.2s ease;
+  }
+
+  .bo--lateral .bo-conteudo {
+    margin-left: var(--bo-lateral-w);
+    transition: margin-left 0.2s ease;
+  }
+
+  /* Só os ícones: o nome continua lá para os leitores de ecrã e aparece ao lado com o rato ou o teclado. */
+  .bo--compacto .bo-menu {
+    padding-inline: 12px;
+  }
+
+  .bo--compacto .bo-menu--vertical .bo-item {
+    justify-content: center;
+    width: 44px;
+    margin-inline: auto;
+    padding: 0;
+  }
+
+  .bo--compacto .bo-item__texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
+
+/* ---------- Ecrãs mais estreitos ---------- */
 
 @media (max-width: 1280px) {
   .bo-app__area {
@@ -658,35 +862,13 @@
     transition: transform 0.25s ease;
   }
 
-  .bo-menu__lista,
-  .bo-menu__itens,
-  .bo-menu__grupo {
-    flex-direction: column;
-    align-items: stretch;
+  /* Alvos de toque maiores. */
+  .bo-menu--vertical .bo-menu__titulo {
+    height: 38px;
   }
 
-  .bo-menu__lista {
-    flex: none;
-    gap: 14px;
-    overflow: visible;
-  }
-
-  .bo-menu__divisor {
-    display: none;
-  }
-
-  .bo-menu__titulo {
-    display: block;
-    padding: 4px 12px 6px;
-    color: var(--bo-menu-label);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-  }
-
-  .bo-item {
-    height: 40px;
+  .bo-menu--vertical .bo-item {
+    height: 42px;
     font-size: 0.875rem;
   }
 
@@ -780,8 +962,12 @@
 @media (prefers-reduced-motion: reduce) {
   .bo-menu,
   .bo--menu-aberto .bo-menu,
-  .bo-veu {
-    transition: none;
+  .bo-veu,
+  .bo-conteudo,
+  .bo-menu__painel,
+  .bo-menu__seta,
+  .bo-dica {
+    transition: none !important;
     animation: none;
   }
 }
